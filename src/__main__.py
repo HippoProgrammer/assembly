@@ -30,7 +30,7 @@ bot = discord.Bot()
 async def on_ready():
     logger.info('Bot ready')
 
-# create slash command for creating and advertising IFVs
+# create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Fetch listed proposals",guild_ids=[1491504463851159603])
 async def fetch_proposals(ctx: discord.ApplicationContext):
     for council in [1,2]:
@@ -38,6 +38,18 @@ async def fetch_proposals(ctx: discord.ApplicationContext):
         for proposal in proposals:
             postgres.add_proposal(proposal)
     await ctx.respond("Latest proposals have been successfully fetched!")
+
+# create slash command for displaying fetched proposals
+@bot.slash_command(name="queue", description="Display all proposals currently in the queue",guild_ids=[1491504463851159603])
+async def send_queue(ctx: discord.ApplicationContext):
+    queue = postgres.get_queue()
+    table = ''
+    for proposal in queue:
+        table += f":green_circle: | {proposal.name} | Quorum | N/A\n"
+    embed = discord.Embed(
+        description = table
+    )
+    await ctx.respond(embed = embed)
 """
 async def advertise_ifv(ctx: discord.ApplicationContext):
     async def add_ifv_callback(interaction):

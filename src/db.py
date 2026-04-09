@@ -20,7 +20,7 @@ class Database:
                     Coauthor_1 VARCHAR(63),
                     Coauthor_2 VARCHAR(63),
                     Coauthor_3 VARCHAR(63),
-                    Legal BOOL
+                    Legal BOOL NOT NULL
                     );
                     """) # create a table for storing queued proposal information, direct from the NS API
                 cur.execute("""
@@ -39,5 +39,19 @@ class Database:
                 INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthor_1, Coauthor_2, Coauthor_3, Legal)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (ID) DO NOTHING;
-                """,proposal.values())
+                """,proposal.toSQLValues())
                 conn.commit()
+    def get_queue(self):
+        with psycopg.connect(self.connection_uri) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                SELECT * FROM NSQueue 
+                WHERE Legal
+                LIMIT 7;
+                """)
+                SQLqueue = cur.fetchall()
+                conn.commit()
+                queue = []
+                for item in SQLqueue:
+                    queue.append(wa.Proposal().fromSQLValues(item))
+                return queue

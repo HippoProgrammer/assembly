@@ -22,14 +22,14 @@ async def parse_proposals(council: int):
     xml = await query_proposals(council)
     parsed_xml = []
     for element in xml:
-        parsed_element = wa.Proposal(
+        parsed_element = wa.Proposal().fromAttributeValues(
             id = element.xpath('./ID')[0].text,
             council = council,
             name = element.xpath('./NAME')[0].text,
             category = element.xpath('./CATEGORY')[0].text,
             author = element.xpath('./PROPOSED_BY')[0].text,
             coauthors = parse_coauthor(element.xpath('./COAUTHOR')),
-            legal = (len(element.xpath('./GENSEC/LEGAL')) > (len(element.xpath('./GENSEC/ILLEGAL')) + len(element.xpath('./GENSEC/DISCARD'))))
+            legal = (len(element.xpath('./GENSEC/LEGAL/*')) > (len(element.xpath('./GENSEC/ILLEGAL/*')) + len(element.xpath('./GENSEC/DISCARD/*'))))
         )
         parsed_xml.append(parsed_element)
     return parsed_xml
