@@ -18,7 +18,8 @@ token, pgpass = env.load_envvars()
 
 # set up the database
 conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
-db.setup(conn_uri)
+postgres = db.Database(conn_uri)
+postgres.setup()
 
 # create the Bot object
 bot = discord.Bot()

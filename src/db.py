@@ -32,3 +32,11 @@ class Database(Object):
                     );
                     """) # create a table for storing IFV information, such as assigned authors and regional positions
                 conn.commit() # save changes to DB
+    def add_proposal(proposal:wa.Proposal):
+        with psycopg.connect(self.connection_uri) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthor_1, Coauthor_2, Coauthor_3, Legal)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """,proposal.values())
+                conn.commit()
