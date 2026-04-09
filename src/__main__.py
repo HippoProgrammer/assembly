@@ -5,40 +5,19 @@ import asyncio # async functionality
 import psycopg # postgres connector
 import db
 import ns
+import env
+import wa
 
 # set up a logger
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
 
-# load envvars 
-token_file = str(os.getenv("ASSEMBLY_TOKEN_FILE"))
-pgpass_file = str(os.getenv("POSTGRES_PASSWORD_FILE"))
-logger.info('Envvars loaded')
-
-# sanity-check envvars
-if not os.path.isfile(token_file):
-    msg = 'ASSEMBLY_TOKEN_FILE environment variable is not a valid path, cannot start'
-    logger.error(msg)
-    raise Exception(msg)
-if not os.path.isfile(pgpass_file):
-    msg = 'POSTGRES_PASS_FILE environment variable is not a valid path, cannot start'
-    logger.error(msg)
-    raise Exception(msg)
-
-# read token file
-with open(token_file,'r') as file:
-    token = file.read()
-logger.info('Token read')
-
-# read passfile
-with open(pgpass_file,'r') as file:
-    pgpass = file.read()
-logger.info('Password read')
-
-conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
+# read envvars
+token, pgpass = env.load_envvars()
 
 # set up the database
+conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
 db.setup(conn_uri)
 
 # create the Bot object
