@@ -1,2 +1,4 @@
 py-cord
 psycopg[binary]
+aiohttp
+lxml
