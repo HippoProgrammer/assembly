@@ -25,12 +25,21 @@ postgres.setup()
 # create the Bot object
 bot = discord.Bot()
 
+# define a method of creating proposal threads
+async def _create_thread(proposal:wa.Proposal, thread=1491829277078061076): # in future versions this will not have a hard-coded default
+    channel = bot.get_channel(thread) 
+    thread = await channel.create_thread(name = proposal.name, content=None) # THIS IS BROKEN. Threads return error 400. Malformed data. in future versions this will link to the proposal page
+    message = await thread.fetch_message(thread.last_message_id)
+    await message.add_reaction('green_circle')
+    await message.add_reaction('red_circle')
+
 # define a method of fetching proposals
 async def _fetch_proposals():
     for council in [1,2]:
         proposals = await ns.parse_proposals(council)        
         for proposal in proposals:
             postgres.add_proposal(proposal)
+            await _create_thread(proposal)
 
 # log when the bot starts up
 @bot.event
@@ -38,15 +47,15 @@ async def on_ready():
     logger.info('Bot ready')
 
 # create slash command for fetching proposals
-@bot.slash_command(name="fetch", description="Fetch listed proposals",guild_ids=[1491504463851159603])
+@bot.slash_command(name="fetch", description="Fetch listed proposals")
 async def fetch_proposals(ctx: discord.ApplicationContext):
     await _fetch_proposals()
     await ctx.respond("Latest proposals have been successfully fetched!")    
 
 # create slash command for displaying fetched proposals
-@bot.slash_command(name="queue", description="Display all proposals currently in the queue",guild_ids=[1491504463851159603])
+@bot.slash_command(name="queue", description="Display all proposals currently in the queue")
 async def send_queue(ctx: discord.ApplicationContext):
-    await _fetch_proposals()
+    await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
     queue = postgres.get_queue()
     table = ''
     for proposal in queue:
