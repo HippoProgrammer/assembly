@@ -39,12 +39,20 @@ async def _fetch_proposals():
         proposals = await ns.parse_proposals(council)        
         for proposal in proposals:
             postgres.add_proposal(proposal)
-            await _create_thread(proposal)
+            #await _create_thread(proposal)
 
 # log when the bot starts up
 @bot.event
 async def on_ready():
     logger.info('Bot ready')
+    
+# create info slash command
+@bot.slash_command(name="info", description="Information about the bot")
+async def info(ctx: discord.ApplicationContext):
+    await ctx.respond(
+    """**Assembly v0.1.0-alpha-1**
+    For help or technical support message @amd_ryzen_8600g on Discord.
+    """)
 
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Fetch listed proposals")
