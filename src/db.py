@@ -2,7 +2,7 @@ import asyncio # async functionality
 import psycopg # postgres connector
 import wa
 
-class Database(Object):
+class Database:
     def __init__(self,connection_uri:str):
         self.connection_uri = connection_uri
     def setup(self):
@@ -13,7 +13,7 @@ class Database(Object):
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS NSQueue (
                     ID VARCHAR(63) PRIMARY KEY,
-                    Council TINYINT CHECK (Council = 1 OR Council = 2),
+                    Council SMALLINT CHECK (Council = 1 OR Council = 2),
                     Name VARCHAR(63) NOT NULL,
                     Category VARCHAR(63) NOT NULL,
                     Author VARCHAR(31) NOT NULL,
@@ -37,6 +37,7 @@ class Database(Object):
             with conn.cursor() as cur:
                 cur.execute("""
                 INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthor_1, Coauthor_2, Coauthor_3, Legal)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (ID) DO NOTHING;
                 """,proposal.values())
                 conn.commit()

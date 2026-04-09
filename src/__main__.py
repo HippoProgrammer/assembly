@@ -3,10 +3,11 @@ import discord # py-cord: discord bot framework
 import logging # log handler
 import asyncio # async functionality
 import psycopg # postgres connector
-import db
-import ns
-import env
-import wa
+import sys # stdout
+import db # database
+import ns # nationstates API
+import env # env vars
+import wa # wa classes
 
 # set up a logger
 logger = logging.getLogger(__name__)
@@ -30,7 +31,14 @@ async def on_ready():
     logger.info('Bot ready')
 
 # create slash command for creating and advertising IFVs
-@bot.slash_command(name="advertise", description="Advertise IFVs to server members",guild_ids=[1491504463851159603])
+@bot.slash_command(name="fetch", description="Fetch listed proposals",guild_ids=[1491504463851159603])
+async def fetch_proposals(ctx: discord.ApplicationContext):
+    for council in [1,2]:
+        proposals = await ns.parse_proposals(council)        
+        for proposal in proposals:
+            postgres.add_proposal(proposal)
+    await ctx.respond("Latest proposals have been successfully fetched!")
+"""
 async def advertise_ifv(ctx: discord.ApplicationContext):
     async def add_ifv_callback(interaction):
         # SET UP CALLBACKS HERE
@@ -49,5 +57,5 @@ async def advertise_ifv(ctx: discord.ApplicationContext):
     view.add_item(remove_ifv)
 
     await ctx.respond(view=view, ephemeral=True)
-
+"""
 bot.run(token)

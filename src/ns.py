@@ -1,5 +1,4 @@
 import aiohttp # HTTP requests
-import os, sys # general os-level functionality
 import asyncio # async functionality
 from lxml import etree # XML parsing
 import wa
@@ -11,6 +10,7 @@ async def query_proposals(council: int):
             xmlstr = await response.text()
             xmltree = etree.fromstring(xmlstr)
             proposals = xmltree.xpath('/WA/PROPOSALS/PROPOSAL')
+            return proposals
 
 def coauthor_check(coauthors:list):
     if len(coauthors) == 0:

@@ -1,6 +1,6 @@
 # general classes for use with WA
-class Proposal(Object):
-    def __init__(self, id:str, council:int, name:str, category:str, author:str, coauthors=[], legal:bool):
+class Proposal:
+    def __init__(self, id:str, council:int, name:str, category:str, author:str, legal:bool, coauthors=[],):
         while len(coauthors) < 3:
             coauthors.append('')
         self.id = id

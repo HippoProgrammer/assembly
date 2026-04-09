@@ -1,3 +1,4 @@
+import os
 def load_envvars():
     # load envvars 
     token_file = str(os.getenv("ASSEMBLY_TOKEN_FILE"))

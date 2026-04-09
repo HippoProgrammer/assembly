@@ -32,7 +32,7 @@ services:
     networks:
       - db-local
     healthcheck:
-      test: ["CMD_SHELL", "pg_isready", "-d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready", "-d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
