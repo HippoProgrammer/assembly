@@ -1,0 +1,50 @@
+name: ns-assembly
+
+services:
+  ns-assembly-app:
+    build: ./
+    depends_on:
+      ns-assembly-db:
+        condition: service_healthy
+    restart: always
+    secrets:
+      - discord-bot-token
+      - db-password
+    environment:
+      ASSEMBLY_TOKEN_FILE: /run/secrets/discord-bot-token
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+    networks:
+      - db-local
+
+  ns-assembly-db:
+    hostname: ns-assembly-db
+    image: postgres:18.3-alpine3.23
+    shm_size: 128mb
+    restart: always
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+      POSTGRES_USER: "ns-assembly"
+      POSTGRES_DB: "ns-assembly"
+    secrets:
+      - db-password
+    volumes:
+      - db-data:/var/lib/postgresql
+    networks:
+      - db-local
+    healthcheck:
+      test: ["CMD_SHELL", "pg_isready", "-d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+secrets:
+  discord-bot-token:
+    file: ./bot.token
+  db-password:
+    file: ./db.password
+  
+volumes:
+  db-data:
+
+networks:
+  db-local:

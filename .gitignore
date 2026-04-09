@@ -1,0 +1,5 @@
+bot.token
+db.password
+
+**/__pycache__/**
+**/*.log
