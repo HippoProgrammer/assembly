@@ -32,7 +32,7 @@ class Database:
                     );
                     """) # create a table for storing IFV information, such as assigned authors and regional positions
                 conn.commit() # save changes to DB
-    def add_proposal(proposal:wa.Proposal):
+    def add_proposal(self,proposal:wa.Proposal):
         with psycopg.connect(self.connection_uri) as conn:
             with conn.cursor() as cur:
                 cur.execute("""

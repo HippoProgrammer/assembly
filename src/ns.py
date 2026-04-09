@@ -12,11 +12,11 @@ async def query_proposals(council: int):
             proposals = xmltree.xpath('/WA/PROPOSALS/PROPOSAL')
             return proposals
 
-def coauthor_check(coauthors:list):
-    if len(coauthors) == 0:
-        return ','
+def parse_coauthor(coauthor:etree._Element):
+    if len(coauthor) == 0:
+        return []
     else: 
-        return coauthors
+        return coauthor[0].text.split(',')
 
 async def parse_proposals(council: int):
     xml = await query_proposals(council)
@@ -28,7 +28,7 @@ async def parse_proposals(council: int):
             name = element.xpath('./NAME')[0].text,
             category = element.xpath('./CATEGORY')[0].text,
             author = element.xpath('./PROPOSED_BY')[0].text,
-            coauthors = coauthor_check(element.xpath('./COAUTHOR')[0].text.split(',')),
+            coauthors = parse_coauthor(element.xpath('./COAUTHOR')),
             legal = (len(element.xpath('./GENSEC/LEGAL')) > (len(element.xpath('./GENSEC/ILLEGAL')) + len(element.xpath('./GENSEC/DISCARD'))))
         )
         parsed_xml.append(parsed_element)
