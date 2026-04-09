@@ -25,6 +25,13 @@ postgres.setup()
 # create the Bot object
 bot = discord.Bot()
 
+# define a method of fetching proposals
+async def _fetch_proposals():
+    for council in [1,2]:
+        proposals = await ns.parse_proposals(council)        
+        for proposal in proposals:
+            postgres.add_proposal(proposal)
+
 # log when the bot starts up
 @bot.event
 async def on_ready():
@@ -33,15 +40,13 @@ async def on_ready():
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Fetch listed proposals",guild_ids=[1491504463851159603])
 async def fetch_proposals(ctx: discord.ApplicationContext):
-    for council in [1,2]:
-        proposals = await ns.parse_proposals(council)        
-        for proposal in proposals:
-            postgres.add_proposal(proposal)
-    await ctx.respond("Latest proposals have been successfully fetched!")
+    await _fetch_proposals()
+    await ctx.respond("Latest proposals have been successfully fetched!")    
 
 # create slash command for displaying fetched proposals
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue",guild_ids=[1491504463851159603])
 async def send_queue(ctx: discord.ApplicationContext):
+    await _fetch_proposals()
     queue = postgres.get_queue()
     table = ''
     for proposal in queue:
