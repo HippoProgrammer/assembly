@@ -41,10 +41,10 @@ async def on_ready():
 # create info slash command
 @bot.slash_command(name="info", description="Information about the bot")
 async def info(ctx: discord.ApplicationContext):
-    await ctx.respond(
-    """**Assembly v0.1.0-alpha-1**
-    For help or technical support message @amd_ryzen_8600g on Discord.
+    embed = discord.Embed(description = """**Assembly v0.1.0-alpha-1**
+    For help or technical support message <@1271403487045095465> on Discord.
     """)
+    await ctx.respond(embed = embed)
 
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
