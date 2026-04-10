@@ -57,7 +57,10 @@ async def send_queue(ctx: discord.ApplicationContext):
     queue = await postgres.get_queue()
     table = ''
     for proposal in queue:
-        table += f":green_circle: | {proposal.name} | Quorum | N/A\n"
+        if queue.index(proposal) <=2:
+            table += f":green_circle: | {proposal.name} | Soon-to-vote | N/A\n"
+        else:
+            table += f":green_circle: | {proposal.name} | Quorum | N/A\n"
     embed = discord.Embed(
         description = table
     )
