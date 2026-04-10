@@ -30,7 +30,6 @@ async def _fetch_proposals():
         proposals = await ns.parse_proposals(council)        
         for proposal in proposals:
             await postgres.add_proposal(proposal)
-            #await _create_thread(proposal)
 
 # log when the bot starts up and has configured the database successfully
 @bot.event
