@@ -6,4 +6,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
 
+ENV PYTHON_UNBUFFERED=1
+
 CMD ["python", "./src/"]

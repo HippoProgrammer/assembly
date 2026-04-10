@@ -21,14 +21,14 @@ class Database:
                     Legal BOOL NOT NULL
                     );
                     """) # create a table for storing queued proposal information, direct from the NS API
-                cur.execute("""
+                cur.execute(""" 
                     CREATE TABLE IF NOT EXISTS IFVQueue (
-                    ID VARCHAR(63) PRIMARY KEY,
-                    Thread BIGINT NOT NULL,
+                    ID TEXT PRIMARY KEY,
+                    Thread BIGINT,
                     IFVAuthor BIGINT,
-                    IFVLink VARCHAR(63)
+                    IFVLink TEXT
                     );
-                    """) # create a table for storing IFV information, such as assigned authors and regional positions
+                    """) # create a table for storing IFV information, such as assigned authors and regional positions. NOTE Thread should be NOT NULL in full release
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS BotPerms (
                     Kind TEXT PRIMARY KEY,
@@ -36,6 +36,7 @@ class Database:
                     );
                     """) # create a table for storing perms
                 conn.commit() # save changes to DB
+    # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal):
         async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
             async with conn.cursor() as cur:
@@ -45,6 +46,17 @@ class Database:
                 ON CONFLICT (ID) DO NOTHING;
                 """,proposal.toSQLValues())
                 await conn.commit()
+    async def nsqueue_get_by_id(self, id:str):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                SELECT * FROM NSQueue
+                WHERE ID = %s;
+                """, [id])
+                SQLproposal = await cur.fetchone()
+                await conn.commit()
+                proposal = classes.wa.Proposal().fromSQLValues(SQLproposal)
+                return proposal
     async def nsqueue_get_all(self):
         async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
             async with conn.cursor() as cur:
@@ -59,6 +71,80 @@ class Database:
                 for item in SQLqueue:
                     queue.append(classes.wa.Proposal().fromSQLValues(item))
                 return queue
+    # IFVQueue table
+    async def ifvqueue_add(self, ifv:classes.ifv.IFV):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                INSERT INTO IFVQueue (ID, Thread, IFVAuthor, IFVLink)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (ID) DO NOTHING;
+                """, ifv.toSQLValues())
+                await conn.commit()
+    async def ifvqueue_get_by_id(self, id:str):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                SELECT * FROM IFVQueue
+                WHERE ID = %s;
+                """, [id])
+                SQLifv = await cur.fetchone()
+                await conn.commit()
+                ifv = classes.ifv.IFV().fromSQLValues(SQLifv)
+                return ifv
+    async def ifvqueue_get_by_author(self, author:int):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                SELECT * FROM IFVQueue
+                WHERE IFVAuthor = %s;
+                """, [author])
+                SQLifvs = await cur.fetchall()
+                await conn.commit()
+                ifvs = []
+                for item in SQLifvs:
+                    ifvs.append(classes.ifv.IFV().fromSQLValues(item))
+                return ifvs
+    async def ifvqueue_get_unauthored(self):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                SELECT * FROM IFVQueue
+                WHERE IFVAuthor IS NULL;
+                """)
+                SQLifvs = await cur.fetchall()
+                await conn.commit()
+                ifvs = []
+                for item in SQLifvs:
+                    ifvs.append(classes.ifv.IFV().fromSQLValues(item))
+                return ifvs
+    async def ifvqueue_update_author_by_id(self, id:str, author:int):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                UPDATE IFVQueue
+                SET IFVAuthor = %s
+                WHERE ID = %s;
+                """, [author, id])
+                await conn.commit()
+    async def ifvqueue_update_link_by_id(self, id:str, link:str):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                UPDATE IFVQueue
+                SET IFV = %s
+                WHERE ID = %s;
+                """, [link, id])
+                await conn.commit()
+    async def ifvqueue_remove(self, id:str):
+        async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                DELETE FROM IFVQueue
+                WHERE ID = %s;
+                """, [id])
+                await conn.commit()
+    # BotPerms table
     async def botperms_add(self, permission:classes.auth.Permission):
         async with await psycopg.AsyncConnection.connect(self.connection_uri) as conn:
             async with conn.cursor() as cur:
