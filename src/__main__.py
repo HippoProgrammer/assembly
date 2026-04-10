@@ -25,14 +25,6 @@ postgres.setup()
 # create the Bot object
 bot = discord.Bot()
 
-# define a method of creating proposal threads
-async def _create_thread(proposal:wa.Proposal, thread=1491829277078061076): # in future versions this will not have a hard-coded default
-    channel = bot.get_channel(thread) 
-    thread = await channel.create_thread(name = proposal.name, content=None) # THIS IS BROKEN. Threads return error 400. Malformed data. in future versions this will link to the proposal page
-    message = await thread.fetch_message(thread.last_message_id)
-    await message.add_reaction('green_circle')
-    await message.add_reaction('red_circle')
-
 # define a method of fetching proposals
 async def _fetch_proposals():
     for council in [1,2]:
