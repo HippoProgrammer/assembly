@@ -20,7 +20,6 @@ token, pgpass = env.load_envvars()
 # set up the database
 conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
 postgres = db.Database(conn_uri)
-postgres.setup()
 
 # create the Bot object
 bot = discord.Bot()
@@ -30,12 +29,13 @@ async def _fetch_proposals():
     for council in [1,2]:
         proposals = await ns.parse_proposals(council)        
         for proposal in proposals:
-            postgres.add_proposal(proposal)
+            await postgres.add_proposal(proposal)
             #await _create_thread(proposal)
 
-# log when the bot starts up
+# log when the bot starts up and has configured the database successfully
 @bot.event
 async def on_ready():
+    await postgres.setup()
     logger.info('Bot ready')
     
 # create info slash command
@@ -55,7 +55,7 @@ async def fetch_proposals(ctx: discord.ApplicationContext):
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue")
 async def send_queue(ctx: discord.ApplicationContext):
     await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
-    queue = postgres.get_queue()
+    queue = await postgres.get_queue()
     table = ''
     for proposal in queue:
         table += f":green_circle: | {proposal.name} | Quorum | N/A\n"
