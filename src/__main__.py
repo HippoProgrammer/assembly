@@ -1,25 +1,25 @@
 # import required libraries
 import discord # py-cord: discord bot framework
+from discord.ext import commands
 import logging # log handler
 import asyncio # async functionality
 import psycopg # postgres connector
 import sys # stdout
-import db # database
-import ns # nationstates API
-import env # env vars
-import wa # wa classes
+import customio as io # db, env, ns 
+import classes # auth, wa
 
 # set up a logger
 logger = logging.getLogger(__name__)
-handler = logging.StreamHandler(stream=sys.stdout)
+handler = logging.StreamHandler(stream=sys.stderr)
 logger.addHandler(handler)
 
 # read envvars
-token, pgpass = env.load_envvars()
+token, pgpass = io.env.load_envvars()
 
 # set up the database
 conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
-postgres = db.Database(conn_uri)
+postgres = io.db.Database(conn_uri)
+postgres.setup_all()
 
 # create the Bot object
 bot = discord.Bot()
@@ -27,45 +27,79 @@ bot = discord.Bot()
 # define a method of fetching proposals
 async def _fetch_proposals():
     for council in [1,2]:
-        proposals = await ns.parse_proposals(council)        
+        proposals = await io.ns.parse_proposals(council)        
         for proposal in proposals:
-            await postgres.add_proposal(proposal)
+            await postgres.nsqueue_add(proposal)
+
+async def _check_perms(ctx:discord.ApplicationContext, check_kind:str):
+    authorised_role_id = await postgres.botperms_get_by_kind(check_kind)
+    if authorised_role_id != None:
+        authorised_role = await ctx.guild.fetch_role(authorised_role_id[0])
+        if authorised_role in ctx.user.roles:
+            return True
+        else:
+            return False
+    else:
+        return False
 
 # log when the bot starts up and has configured the database successfully
 @bot.event
 async def on_ready():
-    await postgres.setup()
     logger.info('Bot ready')
-    
+
 # create info slash command
 @bot.slash_command(name="info", description="Information about the bot")
 async def info(ctx: discord.ApplicationContext):
     embed = discord.Embed(title = "Assembly v0.1.0-alpha-1", description = "For help or technical support message <@1271403487045095465> on Discord.")
     await ctx.respond(embed = embed, ephemeral = True)
 
+@bot.slash_command(name="admin", description="Set admin role")
+@commands.has_permissions(administrator = True) # must be an administrator to execute]
+@discord.option("admin_role", description="Which role should be able to issue admin commands to the bot", type=discord.SlashCommandOptionType.role)
+async def admin(ctx: discord.ApplicationContext, admin_role):
+    await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'admin', identifier=admin_role.id))
+    embed = discord.Embed(description="Admin role has been successfully set!")
+    await ctx.respond(embed = embed, ephemeral = True)
+
+@bot.slash_command(name="user", description="Set user role")
+@commands.has_permissions(administrator = True)
+@discord.option("user_role", description="Which role should be able to issue commands to the bot (note admins are automatically included)", type=discord.SlashCommandOptionType.role)
+async def user(ctx: discord.ApplicationContext, user_role):
+    await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'user', identifier=user_role.id))
+    embed = discord.Embed(description="User role has been successfully set!")
+    await ctx.respond(embed = embed, ephemeral = True)
+
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext):
-    await _fetch_proposals()
-    embed = discord.Embed(title = 'Proposal Fetching', description = 'Latest proposals have been successfully fetched!')
-    await ctx.respond(embed = embed, ephemeral = True)    
+    if await _check_perms(ctx, 'user'):
+        await _fetch_proposals()
+        embed = discord.Embed(title = 'Proposal Fetching', description = 'Latest proposals have been successfully fetched!')
+        await ctx.respond(embed = embed, ephemeral = True)
+    else:
+        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
+        await ctx.respond(embed = embed, ephemeral = True)
 
 # create slash command for displaying fetched proposals
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue")
 async def send_queue(ctx: discord.ApplicationContext):
-    await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
-    queue = await postgres.get_queue()
-    table = ''
-    for proposal in queue:
-        if queue.index(proposal) <=2:
-            status = 'Soon-to-vote'
-        else:
-            status = 'Quorum'
-        table += f":green_circle: | {proposal.name} | {status} | N/A\n"
-    embed = discord.Embed(
-        description = table
-    )
-    await ctx.respond(embed = embed, ephemeral = True)
+    if await _check_perms(ctx, 'user'):
+        await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
+        queue = await postgres.nsqueue_get_all()
+        table = ''
+        for proposal in queue:
+            if queue.index(proposal) <=2:
+                status = 'Soon-to-vote'
+            else:
+                status = 'Quorum'
+            table += f":green_circle: | {proposal.name} | {status} | N/A\n"
+        embed = discord.Embed(
+            description = table
+        )
+        await ctx.respond(embed = embed, ephemeral = True)
+    else:
+        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
+        await ctx.respond(embed = embed, ephemeral = True)
 """
 async def advertise_ifv(ctx: discord.ApplicationContext):
     async def add_ifv_callback(interaction):

@@ -1,6 +1,5 @@
 # general classes for use with WA
-class UninitializedException(Exception):
-    pass
+from .exceptions import *
 
 class Proposal:
     def __init__(self):
@@ -27,6 +26,6 @@ class Proposal:
         return self
     def toSQLValues(self):
         if self.initialized:
-            return (self.id,self.council,self.name,self.category,self.author,self.coauthors,legal)
+            return (self.id,self.council,self.name,self.category,self.author,self.coauthors,self.legal)
         else:
-            raise UninitializedException()
+            raise exceptions.UninitializedException()

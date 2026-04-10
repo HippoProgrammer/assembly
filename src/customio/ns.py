@@ -1,7 +1,7 @@
 import aiohttp # HTTP requests
 import asyncio # async functionality
 from lxml import etree # XML parsing
-import wa
+import classes
 
 async def query_proposals(council: int):
     council = str(council) # convert to string for URL
@@ -22,7 +22,7 @@ async def parse_proposals(council: int):
     xml = await query_proposals(council)
     parsed_xml = []
     for element in xml:
-        parsed_element = wa.Proposal().fromAttributeValues(
+        parsed_element = classes.wa.Proposal().fromAttributeValues(
             id = element.xpath('./ID')[0].text,
             council = council,
             name = element.xpath('./NAME')[0].text,
