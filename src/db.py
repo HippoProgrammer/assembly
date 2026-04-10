@@ -12,14 +12,12 @@ class Database:
             with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS NSQueue (
-                    ID VARCHAR(63) PRIMARY KEY,
+                    ID TEXT PRIMARY KEY,
                     Council SMALLINT CHECK (Council = 1 OR Council = 2),
-                    Name VARCHAR(63) NOT NULL,
-                    Category VARCHAR(63) NOT NULL,
-                    Author VARCHAR(63) NOT NULL,
-                    Coauthor_1 VARCHAR(63),
-                    Coauthor_2 VARCHAR(63),
-                    Coauthor_3 VARCHAR(63),
+                    Name TEXT NOT NULL,
+                    Category TEXT NOT NULL,
+                    Author TEXT NOT NULL,
+                    Coauthors TEXT ARRAY[3],
                     Legal BOOL NOT NULL
                     );
                     """) # create a table for storing queued proposal information, direct from the NS API
@@ -36,8 +34,8 @@ class Database:
         with psycopg.connect(self.connection_uri) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthor_1, Coauthor_2, Coauthor_3, Legal)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (ID) DO NOTHING;
                 """,proposal.toSQLValues())
                 conn.commit()
