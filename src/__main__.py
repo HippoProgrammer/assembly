@@ -50,7 +50,8 @@ async def info(ctx: discord.ApplicationContext):
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext):
     await _fetch_proposals()
-    await ctx.respond("Latest proposals have been successfully fetched!")    
+    embed = discord.Embed(title = 'Proposal Fetching', description = 'Latest proposals have been successfully fetched!')
+    await ctx.respond(embed = embed)    
 
 # create slash command for displaying fetched proposals
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue")
