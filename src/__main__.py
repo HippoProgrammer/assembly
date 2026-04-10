@@ -58,9 +58,10 @@ async def send_queue(ctx: discord.ApplicationContext):
     table = ''
     for proposal in queue:
         if queue.index(proposal) <=2:
-            table += f":green_circle: | {proposal.name} | Soon-to-vote | N/A\n"
+            status = 'Soon-to-vote'
         else:
-            table += f":green_circle: | {proposal.name} | Quorum | N/A\n"
+            status = 'Quorum'
+        table += f":green_circle: | {proposal.name} | {status} | N/A\n"
     embed = discord.Embed(
         description = table
     )
