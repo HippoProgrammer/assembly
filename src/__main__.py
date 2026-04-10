@@ -119,6 +119,8 @@ async def show_queue(ctx: discord.ApplicationContext,ping_users:bool):
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         await ctx.respond(embed = embed, ephemeral = True)
+
+
 """
 async def advertise_ifv(ctx: discord.ApplicationContext):
     async def add_ifv_callback(interaction):
