@@ -47,7 +47,7 @@ async def info(ctx: discord.ApplicationContext):
     """)
 
 # create slash command for fetching proposals
-@bot.slash_command(name="fetch", description="Fetch listed proposals")
+@bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext):
     await _fetch_proposals()
     await ctx.respond("Latest proposals have been successfully fetched!")    
