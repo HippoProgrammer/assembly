@@ -5,12 +5,12 @@ import wa
 class Database:
     def __init__(self,connection_uri:str):
         self.connection_uri = connection_uri
-    def setup(self):
+    async def setup(self):
         # database setup
         # check if the requisite tables already exist
-        with psycopg.connect(self.connection_uri) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
+        async with await psycopg.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
                     CREATE TABLE IF NOT EXISTS NSQueue (
                     ID TEXT PRIMARY KEY,
                     Council SMALLINT CHECK (Council = 1 OR Council = 2),
@@ -21,7 +21,7 @@ class Database:
                     Legal BOOL NOT NULL
                     );
                     """) # create a table for storing queued proposal information, direct from the NS API
-                cur.execute("""
+                await cur.execute("""
                     CREATE TABLE IF NOT EXISTS IFVQueue (
                     ID VARCHAR(63) PRIMARY KEY,
                     Thread INT NOT NULL,
@@ -29,19 +29,19 @@ class Database:
                     IFVLink VARCHAR(63)
                     );
                     """) # create a table for storing IFV information, such as assigned authors and regional positions
-                conn.commit() # save changes to DB
-    def add_proposal(self,proposal:wa.Proposal):
-        with psycopg.connect(self.connection_uri) as conn:
-            with conn.cursor() as cur:
+                await conn.commit() # save changes to DB
+    async def add_proposal(self,proposal:wa.Proposal):
+        async with await psycopg.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
                 cur.execute("""
                 INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (ID) DO NOTHING;
                 """,proposal.toSQLValues())
                 conn.commit()
-    def get_queue(self):
-        with psycopg.connect(self.connection_uri) as conn:
-            with conn.cursor() as cur:
+    async def get_queue(self):
+        async with await psycopg.connect(self.connection_uri) as conn:
+            async with conn.cursor() as cur:
                 cur.execute("""
                 SELECT * FROM NSQueue 
                 WHERE Legal
