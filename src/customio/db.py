@@ -65,6 +65,7 @@ class Database:
                 await cur.execute("""
                 INSERT INTO BotPerms (Kind, Identifier)
                 VALUES (%s, %s)
+                ON CONFLICT (Kind) DO UPDATE SET Identifier = EXCLUDED.Identifier;
                 """, permission.toSQLValues())
                 await conn.commit()
     async def botperms_get_by_kind(self, kind:str):
@@ -72,8 +73,12 @@ class Database:
             async with conn.cursor() as cur:
                 await cur.execute("""
                 SELECT Identifier FROM BotPerms
-                WHERE Kind = %s
+                WHERE Kind = %s;
                 """, [kind])
                 permission = await cur.fetchone() # note this method only allows for one permission of each type to be stored
                 await conn.commit()
+                if permission != None:
+                    permission = int(permission[0])
+                else:
+                    permission = 0
                 return permission

@@ -33,14 +33,30 @@ async def _fetch_proposals():
 
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str):
     authorised_role_id = await postgres.botperms_get_by_kind(check_kind)
-    if authorised_role_id != None:
-        authorised_role = await ctx.guild.fetch_role(authorised_role_id[0])
+    if authorised_role_id:
+        authorised_role = await ctx.guild.fetch_role(authorised_role_id)
         if authorised_role in ctx.user.roles:
             return True
         else:
             return False
     else:
         return False
+
+async def _get_queue_embed():
+    await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
+    queue = await postgres.nsqueue_get_all()
+    table = ''
+    for proposal in queue:
+        if queue.index(proposal) <=2:
+            status = 'Soon-to-vote'
+        else:
+            status = 'Quorum'
+        table += f":green_circle: | {proposal.name} | {status} | N/A\n"
+    embed = discord.Embed(
+        title = 'WA Queue',
+        description = table
+    )
+    return embed
 
 # log when the bot starts up and has configured the database successfully
 @bot.event
@@ -75,28 +91,31 @@ async def fetch_proposals(ctx: discord.ApplicationContext):
     if await _check_perms(ctx, 'user'):
         await _fetch_proposals()
         embed = discord.Embed(title = 'Proposal Fetching', description = 'Latest proposals have been successfully fetched!')
+    else:
+        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
+    await ctx.respond(embed = embed, ephemeral = True)
+
+# create slash command for displaying fetched proposals
+@bot.slash_command(name="queue", description="Display all proposals currently in the queue")
+async def show_queue(ctx: discord.ApplicationContext):
+    if await _check_perms(ctx, 'user'):
+        embed = await _get_queue_embed()
         await ctx.respond(embed = embed, ephemeral = True)
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         await ctx.respond(embed = embed, ephemeral = True)
 
-# create slash command for displaying fetched proposals
-@bot.slash_command(name="queue", description="Display all proposals currently in the queue")
-async def send_queue(ctx: discord.ApplicationContext):
-    if await _check_perms(ctx, 'user'):
-        await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
-        queue = await postgres.nsqueue_get_all()
-        table = ''
-        for proposal in queue:
-            if queue.index(proposal) <=2:
-                status = 'Soon-to-vote'
-            else:
-                status = 'Quorum'
-            table += f":green_circle: | {proposal.name} | {status} | N/A\n"
-        embed = discord.Embed(
-            description = table
-        )
-        await ctx.respond(embed = embed, ephemeral = True)
+# and for advertising fetched proposals
+@bot.slash_command(name="announce_queue", description="Announce all proposals currently in the queue to the current channel.")
+@discord.option("ping_users", description="Whether or not to ping the specified user role.", type=discord.SlashCommandOptionType.boolean)
+async def show_queue(ctx: discord.ApplicationContext,ping_users:bool):
+    if await _check_perms(ctx, 'admin'):
+        embed = await _get_queue_embed()
+        if ping_users:
+            ping = await postgres.botperms_get_by_kind('user')
+            await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True))
+        else:
+            await ctx.respond(embed = embed, ephemeral = False)
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         await ctx.respond(embed = embed, ephemeral = True)
