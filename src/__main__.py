@@ -42,14 +42,14 @@ async def on_ready():
 @bot.slash_command(name="info", description="Information about the bot")
 async def info(ctx: discord.ApplicationContext):
     embed = discord.Embed(title = "Assembly v0.1.0-alpha-1", description = "For help or technical support message <@1271403487045095465> on Discord.")
-    await ctx.respond(embed = embed)
+    await ctx.respond(embed = embed, ephemeral = True)
 
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext):
     await _fetch_proposals()
     embed = discord.Embed(title = 'Proposal Fetching', description = 'Latest proposals have been successfully fetched!')
-    await ctx.respond(embed = embed)    
+    await ctx.respond(embed = embed, ephemeral = True)    
 
 # create slash command for displaying fetched proposals
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue")
@@ -62,7 +62,7 @@ async def send_queue(ctx: discord.ApplicationContext):
     embed = discord.Embed(
         description = table
     )
-    await ctx.respond(embed = embed)
+    await ctx.respond(embed = embed, ephemeral = True)
 """
 async def advertise_ifv(ctx: discord.ApplicationContext):
     async def add_ifv_callback(interaction):
