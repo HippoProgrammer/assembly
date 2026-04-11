@@ -10,75 +10,80 @@ import classes # auth, wa
 import atexit # cleanup functions
 
 # set up a logger
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler(stream=sys.stdout)
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-logger.info('testing')
+logger = logging.getLogger(__name__) # get the logger for this script
+handler = logging.StreamHandler(stream=sys.stdout) # set logs to be sent to stdout
+logger.addHandler(handler) # attach the handler to the logger
+logger.setLevel(logging.DEBUG) # set the logs to output at debug verbosity
 
 # read envvars
-token, pgpass = io.env.load_envvars()
+token, pgpass = io.env.load_envvars() # load environment variables (bot token, postgres db password)
 
 # set up the database
-conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
-postgres = io.db.Database(conn_uri)
-postgres.setup_all()
+conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly" # create a standard postgres connection URI by inserting the loaded password
+postgres = io.db.Database(conn_uri) # create a DB instance
+postgres.setup_all() # run standard setup scripts
 
 # create the Bot object
-bot = discord.Bot()
+bot = discord.Bot() # create a bot instance
 
 # define a method of fetching proposals
-async def _fetch_proposals():
-    for council in [1,2]:
-        proposals = await io.ns.parse_proposals(council)        
-        for proposal in proposals:
-            await postgres.nsqueue_add(proposal)
+async def _fetch_proposals() -> None:
+    """Fetch World Assembly proposals from the NS API, for both councils, into the database."""
+    for council in [1,2]: # for each council
+        proposals = await io.ns.parse_proposals(council) # load a parsed version of the proposals from the API        
+        for proposal in proposals: # for each proposal
+            await postgres.nsqueue_add(proposal) # add it to the NSQueue table
             await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(proposal.id)) # deprecated: in future releases this will be moved to the thread creation function
 
-async def _check_perms(ctx:discord.ApplicationContext, check_kind:str):
-    authorised_role_id = await postgres.botperms_get_by_kind(check_kind)
-    if authorised_role_id:
-        authorised_role = await ctx.guild.fetch_role(authorised_role_id)
-        if authorised_role in ctx.user.roles:
-            return True
-        else:
-            return False
-    else:
-        return False
+async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
+    """Check if the permissions of a supplied user match those stored in the database."""
+    authorised_role_id = await postgres.botperms_get_by_kind(check_kind) # fetch the id of the actual authorised role from the DB
+    if authorised_role_id: # if it exists
+        authorised_role = await ctx.guild.fetch_role(authorised_role_id) # fetch the Role object from the Discord API using the id
+        if authorised_role in ctx.user.roles: # if the user has the Role
+            return True # they are authorised
+        else: # otherwise
+            return False # they are not authorised
+    else: # if the id does not exist, it must not have been set
+        return False # so nobody is authorised
 
-async def _get_queue_embed():
+async def _get_queue_embed() -> discord.Embed:
+    """Get an embed with the World Assembly proposal queue included."""
     await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
-    queue = await postgres.nsqueue_get_all()
-    table = 'Stance | Name | Status | IFV Author | IFV Link\n'
-    for proposal in queue:
-        ifv = await postgres.ifvqueue_get_by_id(proposal.id)
-        name = proposal.name
-        if queue.index(proposal) <=2:
-            status = 'Soon-to-vote'
-        else:
-            status = 'Quorum'
-        if ifv.ifvauthor == None:
-            author = 'N/A'
-        else:
-            author = f'<@{ifv.ifvauthor}>'
-        if ifv.ifvlink == None:
-            link = 'N/A'
-        else:
-            link = f'[{ifv.ifvlink}](Link)'
-        table += f":green_circle: | {name} | {status} | {author} | {link} \n"
+    queue = await postgres.nsqueue_get_all() # fetch all proposals in the NSQueue table
+    table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
+    for proposal in queue: # for each fetched proposal
+        ifv = await postgres.ifvqueue_get_by_id(proposal.id) # get its corresponding IFV entry
+        name = proposal.name # redefine the name
+        if queue.index(proposal) <=2: # if the proposal is within the top 3
+            status = 'Soon-to-vote' # it is soon-to-vote
+        else: # otherwise
+            status = 'Quorum' # it is merely at quorum
+        if ifv.ifvauthor == None: # if no IFV author is listed
+            author = 'N/A' # represent this in a human-readable format
+        else: # if one is listed
+            author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
+        if ifv.ifvlink == None: # if no IFV link is listed
+            link = 'N/A' # represent this in a human-readable format
+        else: # if one is listed
+            link = f'[{ifv.ifvlink}](Link)' # link this in Markdown syntax
+        table += f":green_circle: | {name} | {status} | {author} | {link} \n" # add all this data to the table
     embed = discord.Embed(
         title = 'WA Queue',
         description = table
-    )
-    return embed
+    ) # put the table in an embed
+    return embed # return it
 
 class IFVSubmissionModal(discord.ui.Modal):
-    def __init__(self, id:str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.custom_id = id
-        self.add_item(discord.ui.InputText(label="Link to your IFV:", placeholder='https://www.nationstates.net/page=dispatch/id=2612787'))
-    async def update_by_submission_modal(self, interaction):
-        await postgres.ifvqueue_update_link_by_id(id = self.custom_id, link = self.children[0].value)
+    """A modal where IFV links can be submitted."""
+    def __init__(self, id:str, *args, **kwargs) -> IFVSubmissionModal:
+        """A modal where IFV links can be submitted."""
+        super().__init__(*args, **kwargs) # initialise the base class
+        self.custom_id = id # carry forward the custom id
+        self.add_item(discord.ui.InputText(label="Link to your IFV:", placeholder='https://www.nationstates.net/page=dispatch/id=2612787')) # add a text box
+    async def update_by_submission_modal(self, interaction: discord.Interaction) -> None: # when filled in
+        """Callback for an IFVSubmissionModal that updates the IFV records."""
+        await postgres.ifvqueue_update_link_by_id(id = self.custom_id, link = self.children[0].value) # register the link in the IFV records
 
 class IFVView(discord.ui.View):
     async def _get_select_options_from_ifvs(self, ifvs:list):
