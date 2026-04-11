@@ -1,11 +1,18 @@
-FROM python:3.13.13-alpine3.23 # begin with the base Alpine python image
-WORKDIR /usr/local/ns-assembly # create a directory to store the application 
+# begin with the base Alpine python image
+FROM python:3.13.13-alpine3.23 
+# create a directory to store the application 
+WORKDIR /usr/local/ns-assembly 
 
-COPY requirements.txt ./ # copy requirements file
-RUN pip install --no-cache-dir -r requirements.txt # install required dependencies
+# copy requirements file
+COPY requirements.txt ./ 
+# install required dependencies
+RUN pip install --no-cache-dir -r requirements.txt 
 
-COPY src ./src # copy the source code
+# copy the source code
+COPY src ./src 
 
-ENV PYTHON_UNBUFFERED=1 # make sure logs are unbuffered
+# make sure logs are unbuffered
+ENV PYTHON_UNBUFFERED=1 
 
-CMD ["python", "./src/"] # run source code
+# run source code
+CMD ["python", "./src/"] 
