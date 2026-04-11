@@ -1,5 +1,5 @@
-py-cord
-psycopg[binary]
-psycopg_pool
-aiohttp
-lxml
+py-cord # Discord API wrapper
+psycopg[binary] # Postgres connector
+psycopg_pool # Postgres connection pool
+aiohttp # Async HTTP requests
+lxml # XML parser
