@@ -21,7 +21,6 @@ token, pgpass = io.env.load_envvars() # load environment variables (bot token, p
 # set up the database
 conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly" # create a standard postgres connection URI by inserting the loaded password
 postgres = io.db.Database(conn_uri) # create a DB instance
-postgres.setup_all() # run standard setup scripts
 
 # create the Bot object
 bot = discord.Bot() # create a bot instance
@@ -224,6 +223,7 @@ async def advertise_ifv(ctx: discord.ApplicationContext):
 
 async def main():
     try:
+        await postgres.setup_all() # run standard setup scripts
         await bot.start(token)
     finally:
         await postgres.cleanup()
