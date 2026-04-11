@@ -1,50 +1,50 @@
-name: ns-assembly
+name: ns-assembly # define the name of the app
 
-services:
-  ns-assembly-app:
-    build: ./
-    depends_on:
+services: # define services
+  ns-assembly-app: # main Python app
+    build: ./ # build using a Dockerfile in the local directory
+    depends_on: # delay startup until the DB is ready to accept connections
       ns-assembly-db:
         condition: service_healthy
-    restart: always
-    secrets:
+    restart: always # if errors occur, restart
+    secrets: # pass secrets to the container
       - discord-bot-token
       - db-password
-    environment:
+    environment: # pass location of secrets to the container
       ASSEMBLY_TOKEN_FILE: /run/secrets/discord-bot-token
       POSTGRES_PASSWORD_FILE: /run/secrets/db-password
-    networks:
+    networks: # allow the two containers to communicate
       - db-local
 
-  ns-assembly-db:
-    hostname: ns-assembly-db
-    image: postgres:18.3-alpine3.23
-    shm_size: 128mb
-    restart: always
-    environment:
+  ns-assembly-db: # postgres DB
+    hostname: ns-assembly-db # assign a hostname for easier connection
+    image: postgres:18.3-alpine3.23 # use the latest Postgres Alpine image
+    shm_size: 128mb # define a memory limit
+    restart: always # restart if errors occur
+    environment: # pass location of secrets to the container, and define non-secret configuration info
       POSTGRES_PASSWORD_FILE: /run/secrets/db-password
       POSTGRES_USER: "ns-assembly"
       POSTGRES_DB: "ns-assembly"
-    secrets:
+    secrets: # pass secrets to the container
       - db-password
-    volumes:
+    volumes: # map a volume to the Postgres data directory
       - db-data:/var/lib/postgresql
-    networks:
+    networks: # allow the two containers to communicate
       - db-local
-    healthcheck:
+    healthcheck: # set up a health check to confirm when the DB is ready
       test: ["CMD-SHELL", "pg_isready -U ns-assembly -d ns-assembly"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-secrets:
+secrets:  # define secrets
   discord-bot-token:
     file: ./bot.token
   db-password:
     file: ./db.password
   
-volumes:
+volumes: # allow Docker to handle volume storage
   db-data:
 
-networks:
+networks: # allow Docker to handle networking
   db-local:
