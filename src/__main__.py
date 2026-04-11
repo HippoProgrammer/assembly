@@ -7,6 +7,7 @@ import psycopg # postgres connector
 import sys # stdout
 import customio as io # db, env, ns 
 import classes # auth, wa
+import atexit # cleanup functions
 
 # set up a logger
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ token, pgpass = io.env.load_envvars()
 conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
 postgres = io.db.Database(conn_uri)
 postgres.setup_all()
+atexit.register(postgres.cleanup) 
 
 # create the Bot object
 bot = discord.Bot()
