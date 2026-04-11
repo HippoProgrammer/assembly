@@ -76,7 +76,7 @@ async def _get_queue_embed() -> discord.Embed:
 
 class IFVSubmissionModal(discord.ui.Modal):
     """A modal where IFV links can be submitted."""
-    def __init__(self, id:str, *args, **kwargs) -> IFVSubmissionModal:
+    def __init__(self, id:str, *args, **kwargs) -> discord.ui.Modal:
         """A modal where IFV links can be submitted."""
         super().__init__(*args, **kwargs) # initialise the base class
         self.custom_id = id # carry forward the custom id

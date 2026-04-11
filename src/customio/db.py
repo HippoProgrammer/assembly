@@ -41,141 +41,177 @@ class Database:
         asyncio.get_event_loop().run_until_complete(self.connection_pool.open())
     # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (ID) DO NOTHING;
-                    """,proposal.toSQLValues())
-                    await conn.commit()
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (ID) DO NOTHING;
+                        """,proposal.toSQLValues())
+                        await conn.commit()
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def nsqueue_get_by_id(self, id:str):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    SELECT * FROM NSQueue
-                    WHERE ID = %s;
-                    """, [id])
-                    SQLproposal = await cur.fetchone()
-                    proposal = classes.wa.Proposal().fromSQLValues(SQLproposal)
-                    return proposal
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        SELECT * FROM NSQueue
+                        WHERE ID = %s;
+                        """, [id])
+                        SQLproposal = await cur.fetchone()
+                        proposal = classes.wa.Proposal().fromSQLValues(SQLproposal)
+                        return proposal
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def nsqueue_get_all(self):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    SELECT * FROM NSQueue 
-                    WHERE Legal
-                    LIMIT 7;
-                    """)
-                    SQLqueue = await cur.fetchall()
-                    queue = []
-                    for item in SQLqueue:
-                        queue.append(classes.wa.Proposal().fromSQLValues(item))
-                    return queue
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        SELECT * FROM NSQueue 
+                        WHERE Legal
+                        LIMIT 7;
+                        """)
+                        SQLqueue = await cur.fetchall()
+                        queue = []
+                        for item in SQLqueue:
+                            queue.append(classes.wa.Proposal().fromSQLValues(item))
+                        return queue
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     # IFVQueue table
     async def ifvqueue_add(self, ifv:classes.ifv.IFV):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    INSERT INTO IFVQueue (ID, Thread, IFVAuthor, IFVLink)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (ID) DO NOTHING;
-                    """, ifv.toSQLValues())
-                    await conn.commit()
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        INSERT INTO IFVQueue (ID, Thread, IFVAuthor, IFVLink)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (ID) DO NOTHING;
+                        """, ifv.toSQLValues())
+                        await conn.commit()
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def ifvqueue_get_by_id(self, id:str):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    SELECT * FROM IFVQueue
-                    WHERE ID = %s;
-                    """, [id])
-                    SQLifv = await cur.fetchone()
-                    ifv = classes.ifv.IFV().fromSQLValues(SQLifv)
-                    return ifv
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        SELECT * FROM IFVQueue
+                        WHERE ID = %s;
+                        """, [id])
+                        SQLifv = await cur.fetchone()
+                        ifv = classes.ifv.IFV().fromSQLValues(SQLifv)
+                        return ifv
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def ifvqueue_get_by_author(self, author:int):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    SELECT * FROM IFVQueue
-                    WHERE IFVAuthor = %s;
-                    """, [author])
-                    SQLifvs = await cur.fetchall()
-                    ifvs = []
-                    for item in SQLifvs:
-                        ifvs.append(classes.ifv.IFV().fromSQLValues(item))
-                    return ifvs
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        SELECT * FROM IFVQueue
+                        WHERE IFVAuthor = %s;
+                        """, [author])
+                        SQLifvs = await cur.fetchall()
+                        ifvs = []
+                        for item in SQLifvs:
+                            ifvs.append(classes.ifv.IFV().fromSQLValues(item))
+                        return ifvs
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def ifvqueue_get_unauthored(self):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    SELECT * FROM IFVQueue
-                    WHERE IFVAuthor IS NULL;
-                    """)
-                    SQLifvs = await cur.fetchall()
-                    ifvs = []
-                    for item in SQLifvs:
-                        ifvs.append(classes.ifv.IFV().fromSQLValues(item))
-                    return ifvs
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        SELECT * FROM IFVQueue
+                        WHERE IFVAuthor IS NULL;
+                        """)
+                        SQLifvs = await cur.fetchall()
+                        ifvs = []
+                        for item in SQLifvs:
+                            ifvs.append(classes.ifv.IFV().fromSQLValues(item))
+                        return ifvs
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def ifvqueue_update_author_by_id(self, id:str, author:int):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    UPDATE IFVQueue
-                    SET IFVAuthor = %s
-                    WHERE ID = %s;
-                    """, [author, id])
-                    await conn.commit()
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        UPDATE IFVQueue
+                        SET IFVAuthor = %s
+                        WHERE ID = %s;
+                        """, [author, id])
+                        await conn.commit()
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def ifvqueue_update_link_by_id(self, id:str, link:str):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    UPDATE IFVQueue
-                    SET IFV = %s
-                    WHERE ID = %s;
-                    """, [link, id])
-                    await conn.commit()
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        UPDATE IFVQueue
+                        SET IFV = %s
+                        WHERE ID = %s;
+                        """, [link, id])
+                        await conn.commit()
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def ifvqueue_remove(self, id:str):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    DELETE FROM IFVQueue
-                    WHERE ID = %s;
-                    """, [id])
-                    await conn.commit()
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        DELETE FROM IFVQueue
+                        WHERE ID = %s;
+                        """, [id])
+                        await conn.commit()
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     # BotPerms table
     async def botperms_add(self, permission:classes.auth.Permission):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    INSERT INTO BotPerms (Kind, Identifier)
-                    VALUES (%s, %s)
-                    ON CONFLICT (Kind) DO UPDATE SET Identifier = EXCLUDED.Identifier;
-                    """, permission.toSQLValues())
-                    await conn.commit()
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        INSERT INTO BotPerms (Kind, Identifier)
+                        VALUES (%s, %s)
+                        ON CONFLICT (Kind) DO UPDATE SET Identifier = EXCLUDED.Identifier;
+                        """, permission.toSQLValues())
+                        await conn.commit()
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     async def botperms_get_by_kind(self, kind:str):
-        async with self.connection_pool as pool:
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("""
-                    SELECT Identifier FROM BotPerms
-                    WHERE Kind = %s;
-                    """, [kind])
-                    permission = await cur.fetchone() # note this method only allows for one permission of each type to be stored
-                    if permission != None:
-                        permission = int(permission[0])
-                    else:
-                        permission = 0
-                    return permission
+        try:
+            async with self.connection_pool as pool:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute("""
+                        SELECT Identifier FROM BotPerms
+                        WHERE Kind = %s;
+                        """, [kind])
+                        permission = await cur.fetchone() # note this method only allows for one permission of each type to be stored
+                        if permission != None:
+                            permission = int(permission[0])
+                        else:
+                            permission = 0
+                        return permission
+        except psycopg_pool.PoolTimeout:
+            self.connection_pool.check()
     def cleanup(self):
         asyncio.run(self.connection_pool.close())
