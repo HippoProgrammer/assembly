@@ -1,4 +1,5 @@
 py-cord
 psycopg[binary]
+psycopg_pool
 aiohttp
 lxml
