@@ -3,6 +3,10 @@ import asyncio # async functionality
 from lxml import etree # XML parsing
 import classes
 
+headers = {
+    "User-Agent": "assembly/0.1.0-a1 https://github.com/HippoProgrammer/assembly Written by Idinist Imauggland"
+}
+
 async def query_proposals(council: int):
     council = str(council) # convert to string for URL
     async with aiohttp.ClientSession() as session:
@@ -12,7 +16,7 @@ async def query_proposals(council: int):
             proposals = xmltree.xpath('/WA/PROPOSALS/PROPOSAL')
             return proposals
 
-def parse_coauthor(coauthor:etree._Element):
+async def parse_coauthor(coauthor:etree._Element):
     if len(coauthor) == 0:
         return []
     else: 
@@ -28,7 +32,7 @@ async def parse_proposals(council: int):
             name = element.xpath('./NAME')[0].text,
             category = element.xpath('./CATEGORY')[0].text,
             author = element.xpath('./PROPOSED_BY')[0].text,
-            coauthors = parse_coauthor(element.xpath('./COAUTHOR')),
+            coauthors = await parse_coauthor(element.xpath('./COAUTHOR')),
             legal = (len(element.xpath('./GENSEC/LEGAL/*')) > (len(element.xpath('./GENSEC/ILLEGAL/*')) + len(element.xpath('./GENSEC/DISCARD/*'))))
         )
         parsed_xml.append(parsed_element)
