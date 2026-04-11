@@ -38,7 +38,7 @@ class Database:
                     );
                     """) # create a table for storing perms
                 conn.commit() # save changes to DB
-        await self.connection_pool.open()
+        asyncio.get_event_loop().run_until_complete(self.connection_pool.open())
     # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal):
         async with self.connection_pool as pool:
@@ -177,5 +177,5 @@ class Database:
                     else:
                         permission = 0
                     return permission
-    async def cleanup(self):
-        await self.connection_pool.close()
+    def cleanup(self):
+        asyncio.run(self.connection_pool.close())

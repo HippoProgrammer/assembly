@@ -13,6 +13,8 @@ import atexit # cleanup functions
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+logger.info('testing')
 
 # read envvars
 token, pgpass = io.env.load_envvars()
@@ -21,7 +23,6 @@ token, pgpass = io.env.load_envvars()
 conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly"
 postgres = io.db.Database(conn_uri)
 postgres.setup_all()
-atexit.register(postgres.cleanup) 
 
 # create the Bot object
 bot = discord.Bot()
@@ -215,4 +216,11 @@ async def advertise_ifv(ctx: discord.ApplicationContext):
 
     await ctx.respond(view=view, ephemeral=True)
 """
-bot.run(token)
+
+async def main():
+    try:
+        await bot.start(token)
+    finally:
+        await postgres.cleanup()
+
+asyncio.run(main())
