@@ -40,6 +40,12 @@ class Database:
                     );
                     """) # create a table for storing perms
                 await cur.execute("""
+                    CREATE TABLE IF NOT EXISTS ChannelReference (
+                    Kind TEXT PRIMARY KEY,
+                    Identifier BIGINT NOT NULL
+                    );
+                    """)
+                await cur.execute("""
                     CREATE INDEX NSQueue_ID_index ON NSQueue (ID);
                     """)
                 await cur.execute("""
@@ -207,6 +213,34 @@ class Database:
                     else:
                         permission = 0
                     return permission
+        except psycopg_pool.poolTimeout:
+            self.connection_self.connection_pool.check()
+    async def channelref_add(self, channel:classes.auth.Channel):
+        try:
+            async with self.connection_pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute("""
+                    INSERT INTO ChannelReference (Kind, Identifier)
+                    VALUES (%s, %s)
+                    ON CONFLICT (Kind) DO UPDATE SET Identifier = EXCLUDED.Identifier;
+                    """, channel.toSQLValues())
+                    await conn.commit()
+        except psycopg_pool.poolTimeout:
+            self.connection_self.connection_pool.check()
+    async def channelref_get_by_kind(self, kind:str):
+        try:
+            async with self.connection_pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute("""
+                    SELECT Channel FROM ChannelReference
+                    WHERE Kind = %s;
+                    """, [kind])
+                    channel = await cur.fetchone() # note this method only allows for one permission of each type to be stored
+                    if channel != None:
+                        channel = int(channel[0])
+                    else:
+                        channel = 0
+                    return channel
         except psycopg_pool.poolTimeout:
             self.connection_self.connection_pool.check()
     async def cleanup(self):

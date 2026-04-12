@@ -185,6 +185,14 @@ async def user(ctx: discord.ApplicationContext, user_role):
     embed = discord.Embed(description="User role has been successfully set!")
     await ctx.respond(embed = embed, ephemeral = True)
 
+@bot.slash_command(name="thread", description="Set proposal thread channel")
+@commands.has_permissions(administrator = True)
+@discord.option("thread_channel", description="Which channel should have proposal threads automatically created in it", type=discord.SlashCommandOptionType.channel)
+async def thread(ctx: discord.ApplicationContext, thread_channel):
+    await postgres.channelref_add(classes.auth.Channel().fromAttributeValues(kind = 'thread', identifier=thread_channel.id))
+    embed = discord.Embed(description="Thread channel has been successfully set!")
+    await ctx.respond(embed = embed, ephemeral = True)
+
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext):
