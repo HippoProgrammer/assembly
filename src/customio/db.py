@@ -3,6 +3,9 @@ import psycopg # postgres connector
 import psycopg_pool
 import classes
 
+# set up a logger
+logger = logging.getLogger(__name__) # get the logger for this script
+
 class Database:
     def __init__(self,connection_uri:str):
         self.connection_uri = connection_uri

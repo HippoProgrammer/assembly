@@ -3,6 +3,9 @@ import asyncio # async functionality
 from lxml import etree # XML parsing
 import classes
 
+# set up a logger
+logger = logging.getLogger(__name__) # get the logger for this script
+
 headers = {
     "User-Agent": "assembly/0.1.0-a1 https://github.com/HippoProgrammer/assembly Written by Idinist Imauggland"
 }

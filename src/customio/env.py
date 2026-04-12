@@ -1,4 +1,8 @@
 import os
+
+# set up a logger
+logger = logging.getLogger(__name__) # get the logger for this script
+
 def load_envvars():
     # load envvars 
     token_file = str(os.getenv("ASSEMBLY_TOKEN_FILE"))

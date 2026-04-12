@@ -1,6 +1,9 @@
 # auth classes
 from .exceptions import *
 
+# set up a logger
+logger = logging.getLogger(__name__) # get the logger for this script
+
 class Permission:
     def __init__(self):
         self.initialized = False

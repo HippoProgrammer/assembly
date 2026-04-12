@@ -1,6 +1,9 @@
 # general classes for use with WA
 from .exceptions import *
 
+# set up a logger
+logger = logging.getLogger(__name__) # get the logger for this script
+
 class Proposal:
     def __init__(self):
         self.initialized = False
