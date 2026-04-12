@@ -21,7 +21,8 @@ class Database:
                     Category TEXT NOT NULL,
                     Author TEXT NOT NULL,
                     Coauthors TEXT ARRAY[3],
-                    Legal BOOL NOT NULL
+                    Legal BOOL NOT NULL,
+                    Quorum BOOL NOT NULL
                     );
                     """) # create a table for storing queued proposal information, direct from the NS API
                 await cur.execute(""" 
@@ -63,7 +64,7 @@ class Database:
                     ON CONFLICT (ID) DO NOTHING;
                     """,proposal.toSQLValues())
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def nsqueue_get_by_id(self, id:str):
         try:
@@ -76,7 +77,7 @@ class Database:
                     SQLproposal = await cur.fetchone()
                     proposal = classes.wa.Proposal().fromSQLValues(SQLproposal)
                     return proposal
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def nsqueue_get_all(self):
         try:
@@ -92,7 +93,7 @@ class Database:
                     for item in SQLqueue:
                         queue.append(classes.wa.Proposal().fromSQLValues(item))
                     return queue
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     # IFVQueue table
     async def ifvqueue_add(self, ifv:classes.ifv.IFV):
@@ -105,7 +106,7 @@ class Database:
                     ON CONFLICT (ID) DO NOTHING;
                     """, ifv.toSQLValues())
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def ifvqueue_get_by_id(self, id:str):
         try:
@@ -118,7 +119,7 @@ class Database:
                     SQLifv = await cur.fetchone()
                     ifv = classes.ifv.IFV().fromSQLValues(SQLifv)
                     return ifv
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def ifvqueue_get_by_author(self, author:int):
         try:
@@ -133,7 +134,7 @@ class Database:
                     for item in SQLifvs:
                         ifvs.append(classes.ifv.IFV().fromSQLValues(item))
                     return ifvs
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def ifvqueue_get_unauthored_limited(self,limit = 7):
         try:
@@ -149,7 +150,7 @@ class Database:
                     for item in SQLifvs:
                         ifvs.append(classes.ifv.IFV().fromSQLValues(item))
                     return ifvs
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def ifvqueue_update_author_by_id(self, id:str, author:int):
         try:
@@ -161,7 +162,7 @@ class Database:
                     WHERE ID = %s;
                     """, [author, id])
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def ifvqueue_update_link_by_id(self, id:str, link:str):
         try:
@@ -173,7 +174,7 @@ class Database:
                     WHERE ID = %s;
                     """, [link, id])
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def ifvqueue_remove(self, id:str):
         try:
@@ -184,7 +185,7 @@ class Database:
                     WHERE ID = %s;
                     """, [id])
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     # BotPerms table
     async def botperms_add(self, permission:classes.auth.Permission):
@@ -197,7 +198,7 @@ class Database:
                     ON CONFLICT (Kind) DO UPDATE SET Identifier = EXCLUDED.Identifier;
                     """, permission.toSQLValues())
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def botperms_get_by_kind(self, kind:str):
         try:
@@ -213,7 +214,7 @@ class Database:
                     else:
                         permission = 0
                     return permission
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def channelref_add(self, channel:classes.auth.Channel):
         try:
@@ -225,14 +226,14 @@ class Database:
                     ON CONFLICT (Kind) DO UPDATE SET Identifier = EXCLUDED.Identifier;
                     """, channel.toSQLValues())
                     await conn.commit()
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def channelref_get_by_kind(self, kind:str):
         try:
             async with self.connection_pool.connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute("""
-                    SELECT Channel FROM ChannelReference
+                    SELECT Identifier FROM ChannelReference
                     WHERE Kind = %s;
                     """, [kind])
                     channel = await cur.fetchone() # note this method only allows for one permission of each type to be stored
@@ -241,7 +242,7 @@ class Database:
                     else:
                         channel = 0
                     return channel
-        except psycopg_pool.poolTimeout:
+        except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def cleanup(self):
         await self.connection_pool.close()

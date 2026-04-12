@@ -40,8 +40,10 @@ async def _fetch_proposals() -> None:
     for council in [1,2]: # for each council
         proposals = await io.ns.parse_proposals(council) # load a parsed version of the proposals from the API        
         for proposal in proposals: # for each proposal
-            await postgres.nsqueue_add(proposal) # add it to the NSQueue table
-            await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(proposal.id,proposal.name)) # deprecated: in future releases this will be moved to the thread creation function
+            if proposal.legal and proposal.quorum:
+                await postgres.nsqueue_add(proposal) # add it to the NSQueue table
+                await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(proposal.id,proposal.name)) # deprecated: in future releases this will be moved to the thread creation function
+                await _create_thread_for_proposal(proposal)
 
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
