@@ -26,6 +26,14 @@ postgres = io.db.Database(conn_uri) # create a DB instance
 # create the Bot object
 bot = discord.Bot() # create a bot instance
 
+async def _create_thread_for_proposal(proposal:classes.wa.Proposal):
+    channel = bot.get_channel(await postgres.channelref_get_by_kind('thread'))
+    embed = discord.Embed(
+        title=proposal.name,
+        description=f"Author: {proposal.author}" # add coauthor support later
+    )
+    await channel.create_thread(name=proposal.name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.')
+
 # define a method of fetching proposals
 async def _fetch_proposals() -> None:
     """Fetch World Assembly proposals from the NS API, for both councils, into the database."""
