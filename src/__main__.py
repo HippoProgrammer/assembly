@@ -66,7 +66,7 @@ async def _get_queue_embed() -> discord.Embed:
         if ifv.ifvlink == None: # if no IFV link is listed
             link = 'N/A' # represent this in a human-readable format
         else: # if one is listed
-            link = f'[{ifv.ifvlink}](Link)' # link this in Markdown syntax
+            link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
         table += f":green_circle: | {name} | {status} | {author} | {link} \n" # add all this data to the table
     embed = discord.Embed(
         title = 'WA Queue',
@@ -75,13 +75,11 @@ async def _get_queue_embed() -> discord.Embed:
     return embed # return it
 
 class IFVSelectionModal(discord.ui.DesignerModal):
-    def __init__(self, user_id:int, action:str, options_data:list, view:discord.ui.View, view_interaction, *args, **kwargs) -> None:
+    def __init__(self, user_id:int, action:str, options_data:list, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.action = action
         self.user_id = user_id
-        self.view = view
-        self.view_interaction = view_interaction
 
         options = [discord.SelectOption(label=option.name,value=option.id) for option in options_data]
 
@@ -100,7 +98,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
         if action == 'submit':
             self.add_item(discord.ui.Label(
                 label = 'Link to IFV:',
-                description = 'A link to the text of your proposal. This should NOT be a NationStates dispatch until approval has been gained.',
+                description = 'A link to your IFV. This should NOT be a NationStates dispatch until approval has been gained.',
                 item = discord.ui.InputText(
                     placeholder = 'https://docs.google.com/document/abcdefghijklmnopqrstuvwxyz0123456789abcdefij',
                     custom_id = 'link'
@@ -109,15 +107,20 @@ class IFVSelectionModal(discord.ui.DesignerModal):
             ))
 
     async def callback(self, interaction):
+        success = discord.Embed(description = "IFV modified successfully!").set_footer(text = 'The queue embed may take 1-5 seconds to refresh.')
+        failure_invalid_link = discord.Embed(description = "IFV was not modified.").set_footer(text = 'Please provide a link that is not a NationStates dispatch.')
         if self.action == 'accept':
             await postgres.ifvqueue_update_author_by_id(id = self.get_item('select').values[0], author = self.user_id)
-            await self.view_interaction.edit_original_response(view=self.view,embed=await _get_queue_embed())
+            await interaction.respond(embed = success, ephemeral = True)
         elif self.action == 'submit':
-            await postgres.ifvqueue_update_link_by_id(id = self.get_item('select').values[0], link = self.get_item('link').value)
-            await self.view_interaction.edit_original_response(view=self.view,embed=await _get_queue_embed())
+            if 'nationstates.net' not in self.get_item('link').value :
+                await postgres.ifvqueue_update_link_by_id(id = self.get_item('select').values[0], link = self.get_item('link').value)
+                await interaction.respond(embed = success, ephemeral = True)
+            else:
+                await interaction.respond(embed = failure_invalid_link, ephemeral = True)
         elif self.action == 'remove':
             await postgres.ifvqueue_remove(id = self.get_item('select').values[0])
-            await self.view_interaction.edit_original_response(view=self.view,embed=await _get_queue_embed())
+            await interaction.respond(embed = success, ephemeral = True)
 
 class IFVView(discord.ui.View):
     async def _button(self, button, interaction):
@@ -127,7 +130,10 @@ class IFVView(discord.ui.View):
             options_data = await postgres.ifvqueue_get_unauthored_limited()
         else:
             options_data = await postgres.ifvqueue_get_by_author(user_id)
-        await interaction.response.send_modal(IFVSelectionModal(user_id = user_id, action = action, options_data = options_data, view=self, view_interaction=interaction, title='IFV Modification'))
+        modal = IFVSelectionModal(user_id = user_id, action = action, options_data = options_data, title='IFV Modification')
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        await interaction.edit_original_response(view=self, embed = await _get_queue_embed())
 
     @discord.ui.button(label="Accept IFV", style=discord.ButtonStyle.success, custom_id='accept')
     async def accept(self, button, interaction):
