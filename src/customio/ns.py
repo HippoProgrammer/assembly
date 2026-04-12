@@ -2,6 +2,7 @@ import aiohttp # HTTP requests
 import asyncio # async functionality
 from lxml import etree # XML parsing
 import classes
+import logging
 
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script

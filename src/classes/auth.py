@@ -1,5 +1,6 @@
 # auth classes
 from .exceptions import *
+import logging
 
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script

@@ -2,6 +2,7 @@ import asyncio # async functionality
 import psycopg # postgres connector
 import psycopg_pool
 import classes
+import logging
 
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script
