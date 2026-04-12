@@ -82,6 +82,11 @@ class IFVSelectionModal(discord.ui.DesignerModal):
         self.user_id = user_id
 
         options = [discord.SelectOption(label=option.name,value=option.id) for option in options_data]
+        
+        self.valid = bool(len(options))
+
+        if not self.valid:
+            options = [discord.SelectOption(label='No modifiable IFVs.')]
 
         self.add_item(discord.ui.Label(
             label = 'IFV:',
@@ -95,7 +100,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
             )
         ))
 
-        if action == 'submit':
+        if action == 'submit' and self.valid:
             self.add_item(discord.ui.Label(
                 label = 'Link to IFV:',
                 description = 'A link to your IFV. This should NOT be a NationStates dispatch until approval has been gained.',
@@ -103,13 +108,15 @@ class IFVSelectionModal(discord.ui.DesignerModal):
                     placeholder = 'https://docs.google.com/document/abcdefghijklmnopqrstuvwxyz0123456789abcdefij',
                     custom_id = 'link'
                 )
-                
             ))
 
     async def callback(self, interaction):
         success = discord.Embed(description = "IFV modified successfully!").set_footer(text = 'The queue embed may take 1-5 seconds to refresh.')
         failure_invalid_link = discord.Embed(description = "IFV was not modified.").set_footer(text = 'Please provide a link that is not a NationStates dispatch.')
-        if self.action == 'accept':
+        failure_invalid_options = discord.Embed(description = "IFV was not selected.").set_footer(text = 'You have no valid IFVs for the selected action!')
+        if not self.valid:
+            await interaction.respond(embed = failure_invalid_options, ephemeral = True)
+        elif self.action == 'accept':
             await postgres.ifvqueue_update_author_by_id(id = self.get_item('select').values[0], author = self.user_id)
             await interaction.respond(embed = success, ephemeral = True)
         elif self.action == 'submit':
@@ -147,7 +154,7 @@ class IFVView(discord.ui.View):
     async def remove(self, button, interaction):
         await self._button(button, interaction)
 
-    async def on_error(self, error, item, interaction):
+    async def on_error(self, error, item, interaction): # deprecated
         print(f"Error in {item}: {error}")
         traceback.print_exception(type(error), error, error.__traceback__)
 
