@@ -1,3 +1,4 @@
+#!/bin/python
 # import required libraries
 import discord # py-cord: discord bot framework
 from discord.ext import commands
@@ -7,7 +8,7 @@ import psycopg # postgres connector
 import sys # stdout
 import customio as io # db, env, ns 
 import classes # auth, wa
-import atexit # cleanup functions
+import traceback
 
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script
@@ -32,7 +33,7 @@ async def _fetch_proposals() -> None:
         proposals = await io.ns.parse_proposals(council) # load a parsed version of the proposals from the API        
         for proposal in proposals: # for each proposal
             await postgres.nsqueue_add(proposal) # add it to the NSQueue table
-            await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(proposal.id)) # deprecated: in future releases this will be moved to the thread creation function
+            await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(proposal.id,proposal.name)) # deprecated: in future releases this will be moved to the thread creation function
 
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
@@ -73,69 +74,76 @@ async def _get_queue_embed() -> discord.Embed:
     ) # put the table in an embed
     return embed # return it
 
-class IFVSubmissionModal(discord.ui.Modal):
-    """A modal where IFV links can be submitted."""
-    def __init__(self, id:str, *args, **kwargs) -> discord.ui.Modal:
-        """A modal where IFV links can be submitted."""
-        super().__init__(*args, **kwargs) # initialise the base class
-        self.custom_id = id # carry forward the custom id
-        self.add_item(discord.ui.InputText(label="Link to your IFV:", placeholder='https://www.nationstates.net/page=dispatch/id=2612787')) # add a text box
-    async def update_by_submission_modal(self, interaction: discord.Interaction) -> None: # when filled in
-        """Callback for an IFVSubmissionModal that updates the IFV records."""
-        await postgres.ifvqueue_update_link_by_id(id = self.custom_id, link = self.children[0].value) # register the link in the IFV records
+class IFVSelectionModal(discord.ui.DesignerModal):
+    def __init__(self, user_id:int, action:str, options_data:list, view:discord.ui.View, view_interaction, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.action = action
+        self.user_id = user_id
+        self.view = view
+        self.view_interaction = view_interaction
+
+        options = [discord.SelectOption(label=option.name,value=option.id) for option in options_data]
+
+        self.add_item(discord.ui.Label(
+            label = 'IFV:',
+            description = f'Select which IFV you would like to {action}.',
+            item = discord.ui.StringSelect(
+                placeholder = 'Select an IFV...',
+                min_values = 1,
+                max_values = 1,
+                options = options,
+                custom_id = 'select'
+            )
+        ))
+
+        if action == 'submit':
+            self.add_item(discord.ui.Label(
+                label = 'Link to IFV:',
+                description = 'A link to the text of your proposal. This should NOT be a NationStates dispatch until approval has been gained.',
+                item = discord.ui.InputText(
+                    placeholder = 'https://docs.google.com/document/abcdefghijklmnopqrstuvwxyz0123456789abcdefij',
+                    custom_id = 'link'
+                )
+                
+            ))
+
+    async def callback(self, interaction):
+        if self.action == 'accept':
+            await postgres.ifvqueue_update_author_by_id(id = self.get_item('select').values[0], author = self.user_id)
+            await self.view_interaction.edit_original_response(view=self.view,embed=await _get_queue_embed())
+        elif self.action == 'submit':
+            await postgres.ifvqueue_update_link_by_id(id = self.get_item('select').values[0], link = self.get_item('link').value)
+            await self.view_interaction.edit_original_response(view=self.view,embed=await _get_queue_embed())
+        elif self.action == 'remove':
+            await postgres.ifvqueue_remove(id = self.get_item('select').values[0])
+            await self.view_interaction.edit_original_response(view=self.view,embed=await _get_queue_embed())
 
 class IFVView(discord.ui.View):
-    async def _get_select_options_from_ifvs(self, ifvs:list):
-        return [discord.SelectOption(label=(await postgres.nsqueue_get_by_id(ifv.id)).name, value=ifv.id) for ifv in ifvs]
-    @discord.ui.button(style = discord.ButtonStyle.primary,custom_id = 'accept',label = 'Accept IFV')
-    async def button_accept_ifv_callback(self, button, interaction):
-        await interaction.response.defer()
-        self.get_item('submit').disabled = True
-        self.get_item('remove').disabled = True
-        self.get_item('select').disabled = False
-        ifvs = await postgres.ifvqueue_get_unauthored()
-        self.get_item('select').options = await self._get_select_options_from_ifvs(ifvs[:25])
-        self.custom_action = 'accept'
-        await interaction.edit_original_response(view=self) # update the message
-    @discord.ui.button(style = discord.ButtonStyle.success,custom_id = 'submit',label = 'Submit IFV')
-    async def button_submit_ifv_callback(self, button, interaction):
-        self.get_item('accept').disabled = True
-        self.get_item('remove').disabled = True
-        self.get_item('select').disabled = False
-        ifvs = await postgres.ifvqueue_get_by_author(interaction.user.id)
-        self.get_item('select').options = await self._get_select_options_from_ifvs(ifvs[:25])
-        self.custom_action = 'submit'
-        await interaction.edit_original_response(view=self)
-    @discord.ui.button(style = discord.ButtonStyle.danger,custom_id = 'remove',label = 'Remove IFV')
-    async def button_remove_ifv_callback(self, button, interaction):
-        await interaction.response.defer()
-        self.get_item('submit').disabled = True
-        self.get_item('accept').disabled = True
-        self.get_item('select').disabled = False
-        ifvs = await postgres.ifvqueue_get_by_author(interaction.user.id)
-        self.get_item('select').options = await self._get_select_options_from_ifvs(ifvs[:25])
-        self.custom_action = 'remove' 
-        await interaction.edit_original_response(view=self)
-    @discord.ui.select(placeholder = 'Select an IFV',min_values = 1,max_values = 1,options = [discord.SelectOption(label="No IFVs loaded.")],custom_id = 'select',disabled = True)
-    async def select_ifv_callback(self, select, interaction):
-        await interaction.response.defer()
-        if self.custom_action == 'accept':
-            await postgres.ifvqueue_update_author_by_id(id = select.values[0], author = interaction.user.id)
-        elif self.custom_action == 'submit':
-            # send a modal
-            await interaction.response.send_modal(IFVSubmissionModal(title="IFV Submission", id = select.values[0]))
-        elif self.custom_action == 'remove':
-            await postgres.ifvqueue_remove(id = select.values[0])
-        self.get_item('accept').disabled = False
-        self.get_item('submit').disabled = False
-        self.get_item('remove').disabled = False
-        self.get_item('select').disabled = True
-        embed = await _get_queue_embed()
-        await interaction.edit_original_response(view=self,embed=embed)
-    async def on_error(self, error: Exception, item, interaction: discord.Interaction):
-        # This catches errors from any component in the View
-        raise error
+    async def _button(self, button, interaction):
+        action = button.custom_id
+        user_id = interaction.user.id
+        if button.custom_id == 'accept':
+            options_data = await postgres.ifvqueue_get_unauthored_limited()
+        else:
+            options_data = await postgres.ifvqueue_get_by_author(user_id)
+        await interaction.response.send_modal(IFVSelectionModal(user_id = user_id, action = action, options_data = options_data, view=self, view_interaction=interaction, title='IFV Modification'))
 
+    @discord.ui.button(label="Accept IFV", style=discord.ButtonStyle.success, custom_id='accept')
+    async def accept(self, button, interaction):
+        await self._button(button, interaction)
+
+    @discord.ui.button(label="Submit IFV", style=discord.ButtonStyle.primary, custom_id='submit')
+    async def submit(self, button, interaction):
+        await self._button(button, interaction)
+
+    @discord.ui.button(label="Remove IFV", style=discord.ButtonStyle.danger, custom_id='remove')
+    async def remove(self, button, interaction):
+        await self._button(button, interaction)
+
+    async def on_error(self, error, item, interaction):
+        print(f"Error in {item}: {error}")
+        traceback.print_exception(type(error), error, error.__traceback__)
 
 # log when the bot starts up and has configured the database successfully
 @bot.event
@@ -199,33 +207,13 @@ async def show_queue(ctx: discord.ApplicationContext,ping_users:bool):
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         await ctx.respond(embed = embed, ephemeral = True)
 
-
-"""
-async def advertise_ifv(ctx: discord.ApplicationContext):
-    async def add_ifv_callback(interaction):
-        # SET UP CALLBACKS HERE
-        pass
-    async def remove_ifv_callback(interaction):
-        # SET UP CALLBACKS HERE
-        pass
-    add_ifv = discord.ui.Button(label='Add IFV')
-    remove_ifv = discord.ui.Button(label='Remove IFV')
-    add_ifv.callback = add_ifv_callback
-    remove_ifv.callback = remove_ifv_callback
-
-    # generate a View with Buttons added
-    view = discord.ui.View()
-    view.add_item(add_ifv)
-    view.add_item(remove_ifv)
-
-    await ctx.respond(view=view, ephemeral=True)
-"""
-
 async def main():
     try:
         await postgres.setup_all() # run standard setup scripts
         await bot.start(token)
+    except asyncio.exceptions.CancelledError:
+        pass
     finally:
         await postgres.cleanup()
-
+        
 asyncio.run(main())

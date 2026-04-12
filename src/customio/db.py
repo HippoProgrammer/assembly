@@ -27,6 +27,7 @@ class Database:
                 await cur.execute(""" 
                     CREATE TABLE IF NOT EXISTS IFVQueue (
                     ID TEXT PRIMARY KEY,
+                    Name TEXT NOT NULL,
                     Thread BIGINT,
                     IFVAuthor BIGINT,
                     IFVLink TEXT
@@ -38,6 +39,12 @@ class Database:
                     Identifier BIGINT NOT NULL
                     );
                     """) # create a table for storing perms
+                await cur.execute("""
+                    CREATE INDEX NSQueue_ID_index ON NSQueue (ID);
+                    """)
+                await cur.execute("""
+                    CREATE INDEX IFVQueue_Author_index on IFVQueue (IFVAuthor);
+                    """)
                 await conn.commit() # save changes to DB
     # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal):
@@ -87,8 +94,8 @@ class Database:
             async with self.connection_pool.connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute("""
-                    INSERT INTO IFVQueue (ID, Thread, IFVAuthor, IFVLink)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO IFVQueue (ID, Name, Thread, IFVAuthor, IFVLink)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (ID) DO NOTHING;
                     """, ifv.toSQLValues())
                     await conn.commit()
@@ -122,14 +129,15 @@ class Database:
                     return ifvs
         except psycopy_pool.poolTimeout:
             self.connection_self.connection_pool.check()
-    async def ifvqueue_get_unauthored(self):
+    async def ifvqueue_get_unauthored_limited(self,limit = 7):
         try:
             async with self.connection_pool.connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute("""
                     SELECT * FROM IFVQueue
-                    WHERE IFVAuthor IS NULL;
-                    """)
+                    WHERE IFVAuthor IS NULL
+                    LIMIT %s;
+                    """,[limit])
                     SQLifvs = await cur.fetchall()
                     ifvs = []
                     for item in SQLifvs:
@@ -201,5 +209,5 @@ class Database:
                     return permission
         except psycopy_pool.poolTimeout:
             self.connection_self.connection_pool.check()
-    def cleanup(self):
-        asyncio.run(self.connection_pool.close())
+    async def cleanup(self):
+        await self.connection_pool.close()
