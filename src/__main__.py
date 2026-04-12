@@ -9,6 +9,7 @@ import sys # stdout
 import customio as io # db, env, ns 
 import classes # auth, wa
 import traceback
+import datetime
 
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script
@@ -28,11 +29,23 @@ bot = discord.Bot() # create a bot instance
 
 async def _create_thread_for_proposal(proposal:classes.wa.Proposal):
     channel = bot.get_channel(await postgres.channelref_get_by_kind('thread'))
+    name = proposal.name
+    id = proposal.id
+    author = proposal.author.replace('_',' ').title()
+    if proposal.coauthors:
+        coauthors = ', '.join(proposal.coauthors).replace('_',' ').title()
+    else:
+        coauthors = 'N/A'
+    link = f'[Link to proposal text](https://nationstates.net/page=UN_view_proposal/id={id})'
     embed = discord.Embed(
-        title=proposal.name,
-        description=f"Author: {proposal.author}" # add coauthor support later
+        title=name,
+        description=f"Author: {author} | Coauthor(s): {coauthors}\n{link}" # add coauthor support later
     )
-    await channel.create_thread(name=proposal.name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.')
+    thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.')
+    message = thread.starting_message
+    await message.add_reaction('🟢')
+    await message.add_reaction('🔴')
+    await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id))
 
 # define a method of fetching proposals
 async def _fetch_proposals() -> None:
@@ -42,8 +55,7 @@ async def _fetch_proposals() -> None:
         for proposal in proposals: # for each proposal
             if proposal.legal and proposal.quorum:
                 await postgres.nsqueue_add(proposal) # add it to the NSQueue table
-                await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(proposal.id,proposal.name)) # deprecated: in future releases this will be moved to the thread creation function
-                await _create_thread_for_proposal(proposal)
+                await _create_thread_for_proposal(proposal) # create a thread and add it to the IFVQueue table
 
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
@@ -64,23 +76,40 @@ async def _get_queue_embed() -> discord.Embed:
     table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
     for proposal in queue: # for each fetched proposal
         ifv = await postgres.ifvqueue_get_by_id(proposal.id) # get its corresponding IFV entry
+
         name = proposal.name # redefine the name
+
         if queue.index(proposal) <=2: # if the proposal is within the top 3
             status = 'Soon-to-vote' # it is soon-to-vote
         else: # otherwise
             status = 'Quorum' # it is merely at quorum
+
         if ifv.ifvauthor == None: # if no IFV author is listed
             author = 'N/A' # represent this in a human-readable format
         else: # if one is listed
             author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
+
         if ifv.ifvlink == None: # if no IFV link is listed
             link = 'N/A' # represent this in a human-readable format
         else: # if one is listed
             link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
-        table += f":green_circle: | {name} | {status} | {author} | {link} \n" # add all this data to the table
+        
+        reactions = bot.get_channel(ifv.thread).starting_message.reactions
+        green = [react for react in reactions if react.emoji == '🟢'][0].count
+        red = [react for react in reactions if react.emoji == '🔴'][0].count
+
+        if green == red:
+            emoji = '🟢/🔴'
+        elif green > red:
+            emoji = '🟢'
+        else:
+            emoji = '🔴'
+        
+        table += f"{emoji} | {name} | {status} | {author} | {link} \n" # add all this data to the table
     embed = discord.Embed(
         title = 'WA Queue',
-        description = table
+        description = table,
+        timestamp = datetime.datetime.now()
     ) # put the table in an embed
     return embed # return it
 
@@ -163,6 +192,10 @@ class IFVView(discord.ui.View):
     @discord.ui.button(label="Remove IFV", style=discord.ButtonStyle.danger, custom_id='remove')
     async def remove(self, button, interaction):
         await self._button(button, interaction)
+    
+    @discord.ui.button(label="Refresh Queue", style=discord.ButtonStyle.secondary, custom_id='refresh')
+    async def refresh(self, button, interaction):
+        await interaction.edit_original_response(view=self, embed = await _get_queue_embed())
 
     async def on_error(self, error, item, interaction): # deprecated
         print(f"Error in {item}: {error}")

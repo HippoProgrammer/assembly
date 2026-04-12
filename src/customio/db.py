@@ -59,8 +59,8 @@ class Database:
             async with self.connection_pool.connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute("""
-                    INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal, Quorum)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (ID) DO NOTHING;
                     """,proposal.toSQLValues())
                     await conn.commit()
