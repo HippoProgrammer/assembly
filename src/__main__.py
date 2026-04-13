@@ -305,7 +305,7 @@ async def info(ctx: discord.ApplicationContext) -> None:
     logger.info('Info embed sent')
 
 @bot.slash_command(name="admin", description="Set admin role")
-@commands.has_permissions(administrator = True) # must be an administrator to execute]
+@discord.default_permissions(administrator = True) # must be an administrator to execute]
 @discord.option("admin_role", description="Which role should be able to issue admin commands to the bot", type=discord.SlashCommandOptionType.role)
 async def admin(ctx: discord.ApplicationContext, admin_role) -> None:
     await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'admin', identifier=admin_role.id))
@@ -318,7 +318,7 @@ async def admin(ctx: discord.ApplicationContext, admin_role) -> None:
     logger.info('Success embed sent')
 
 @bot.slash_command(name="user", description="Set user role")
-@commands.has_permissions(administrator = True)
+@discord.default_permissions(administrator = True)
 @discord.option("user_role", description="Which role should be able to issue commands to the bot (note admins are automatically included)", type=discord.SlashCommandOptionType.role)
 async def user(ctx: discord.ApplicationContext, user_role) -> None:
     await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'user', identifier=user_role.id))
@@ -331,7 +331,7 @@ async def user(ctx: discord.ApplicationContext, user_role) -> None:
     logger.info('Success embed sent')
 
 @bot.slash_command(name="thread", description="Set proposal thread channel")
-@commands.has_permissions(administrator = True)
+@discord.default_permissions(administrator = True)
 @discord.option("thread_channel", description="Which channel should have proposal threads automatically created in it", type=discord.SlashCommandOptionType.channel)
 async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
     await postgres.channelref_add(classes.auth.Channel().fromAttributeValues(kind = 'thread', identifier=thread_channel.id))
