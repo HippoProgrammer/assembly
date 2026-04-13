@@ -115,7 +115,7 @@ async def _get_queue_embed() -> discord.Embed:
     """Get an embed with the World Assembly proposal queue included."""
     await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
 
-    queue = await postgres.nsqueue_get_all() # fetch all proposals in the NSQueue table
+    queue = await postgres.nsqueue_get_all_legal_limited() # fetch all proposals in the NSQueue table
     logger.debug('Proposals fetched from DB')
 
     table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
@@ -346,7 +346,7 @@ async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext) -> None:
-    ctx.defer()
+    await ctx.defer()
     if await _check_perms(ctx, 'user'):
         logger.info('Fetching proposals')
         await _fetch_proposals()
@@ -357,32 +357,32 @@ async def fetch_proposals(ctx: discord.ApplicationContext) -> None:
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         logger.debug('Embed object created')
-    await ctx.followup.send(embed = embed, ephemeral = True)
+    await ctx.respond(embed = embed, ephemeral = True)
     logger.info('Response embed sent')
 
 # create slash command for displaying fetched proposals
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue")
 async def show_queue(ctx: discord.ApplicationContext) -> None:
-    ctx.defer()
+    await ctx.defer()
     if await _check_perms(ctx, 'user'):
         logger.info('Fetching queue embed')
         embed = await _get_queue_embed()
         logger.info('Queue embed fetched')
 
-        await ctx.followup.send(embed = embed, ephemeral = True, view=IFVView())
+        await ctx.respond(embed = embed, ephemeral = True, view=IFVView())
         logger.info('Queue embed sent')
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         logger.debug('Embed object created')
 
-        await ctx.followup.send(embed = embed, ephemeral = True)
+        await ctx.respond(embed = embed, ephemeral = True)
         logger.info('Error embed sent')
 
 # and for advertising fetched proposals
 @bot.slash_command(name="announce_queue", description="Announce all proposals currently in the queue to the current channel.")
 @discord.option("ping_users", description="Whether or not to ping the specified user role.", type=discord.SlashCommandOptionType.boolean)
 async def announce_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
-    ctx.defer()
+    await ctx.defer()
     if await _check_perms(ctx, 'admin'):
         logger.info('Fetching queue embed')
         embed = await _get_queue_embed()
@@ -392,16 +392,16 @@ async def announce_queue(ctx: discord.ApplicationContext,ping_users:bool) -> Non
             ping = await postgres.botperms_get_by_kind('user')
             logger.debug('Ping role id found')
 
-            await ctx.followup.send(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView())
+            await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView())
             logger.info('Queue embed sent (announced) and pinged')
         else:
-            await ctx.followup.send(embed = embed, ephemeral = False, view=IFVView())
+            await ctx.respond(embed = embed, ephemeral = False, view=IFVView())
             logger.info('Queue embed sent (announced)')
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         logger.debug('Embed object created')
 
-        await ctx.followup.send(embed = embed, ephemeral = True)
+        await ctx.respond(embed = embed, ephemeral = True)
         logger.info('Error embed sent')
 
 async def main() -> None:
