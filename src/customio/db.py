@@ -63,10 +63,10 @@ class Database:
                     """) # create a table for storing channels
                 logger.info('ChannelReference table created')
                 await cur.execute("""
-                    CREATE INDEX NSQueue_ID_index ON NSQueue (ID);
+                    CREATE INDEX IF NOT EXISTS NSQueue_ID_index ON NSQueue (ID);
                     """) # create relevant indexes on frequently-queried tables
                 await cur.execute("""
-                    CREATE INDEX IFVQueue_Author_index on IFVQueue (IFVAuthor);
+                    CREATE INDEX IF NOT EXISTS IFVQueue_Author_index on IFVQueue (IFVAuthor);
                     """)
                 logger.info('Indexes created')
                 await conn.commit() # save changes to DB

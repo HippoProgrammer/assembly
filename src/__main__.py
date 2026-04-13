@@ -346,6 +346,7 @@ async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext) -> None:
+    ctx.defer()
     if await _check_perms(ctx, 'user'):
         logger.info('Fetching proposals')
         await _fetch_proposals()
@@ -356,30 +357,32 @@ async def fetch_proposals(ctx: discord.ApplicationContext) -> None:
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         logger.debug('Embed object created')
-    await ctx.respond(embed = embed, ephemeral = True)
+    await ctx.followup.send(embed = embed, ephemeral = True)
     logger.info('Response embed sent')
 
 # create slash command for displaying fetched proposals
 @bot.slash_command(name="queue", description="Display all proposals currently in the queue")
 async def show_queue(ctx: discord.ApplicationContext) -> None:
+    ctx.defer()
     if await _check_perms(ctx, 'user'):
         logger.info('Fetching queue embed')
         embed = await _get_queue_embed()
         logger.info('Queue embed fetched')
 
-        await ctx.respond(embed = embed, ephemeral = True, view=IFVView())
+        await ctx.followup.send(embed = embed, ephemeral = True, view=IFVView())
         logger.info('Queue embed sent')
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         logger.debug('Embed object created')
 
-        await ctx.respond(embed = embed, ephemeral = True)
+        await ctx.followup.send(embed = embed, ephemeral = True)
         logger.info('Error embed sent')
 
 # and for advertising fetched proposals
 @bot.slash_command(name="announce_queue", description="Announce all proposals currently in the queue to the current channel.")
 @discord.option("ping_users", description="Whether or not to ping the specified user role.", type=discord.SlashCommandOptionType.boolean)
-async def show_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
+async def announce_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
+    ctx.defer()
     if await _check_perms(ctx, 'admin'):
         logger.info('Fetching queue embed')
         embed = await _get_queue_embed()
@@ -389,16 +392,16 @@ async def show_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
             ping = await postgres.botperms_get_by_kind('user')
             logger.debug('Ping role id found')
 
-            await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView())
+            await ctx.followup.send(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView())
             logger.info('Queue embed sent (announced) and pinged')
         else:
-            await ctx.respond(embed = embed, ephemeral = False, view=IFVView())
+            await ctx.followup.send(embed = embed, ephemeral = False, view=IFVView())
             logger.info('Queue embed sent (announced)')
     else:
         embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
         logger.debug('Embed object created')
 
-        await ctx.respond(embed = embed, ephemeral = True)
+        await ctx.followup.send(embed = embed, ephemeral = True)
         logger.info('Error embed sent')
 
 async def main() -> None:
@@ -408,7 +411,8 @@ async def main() -> None:
         logger.info('DB setup scripts completed')
 
         logger.info('Starting bot')
-        await bot.start(token)
+        async with bot:
+            await bot.start(token)
         logger.info('Bot started')
     except asyncio.exceptions.CancelledError:
         logger.warning('asyncio.exceptions.CancelledError was suppressed - was a SIGINT sent?')
@@ -421,5 +425,5 @@ async def main() -> None:
         logger.info('DB cleanup scripts completed')
 
         logger.critical('Program terminated')
-        
+
 asyncio.run(main())

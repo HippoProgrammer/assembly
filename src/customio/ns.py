@@ -35,6 +35,12 @@ async def _get_quorum():
             quorum = round(numdelegates * 0.06, 1)
             return quorum
 
+async def _parse_approvals(approval:etree._Element):
+    if approval[0].text == None:
+        return []
+    else:
+        return approval[0].text.split(':')
+
 async def parse_proposals(council: int):
     xml = await _query_proposals(council)
     parsed_xml = []
@@ -47,7 +53,7 @@ async def parse_proposals(council: int):
             author = element.xpath('./PROPOSED_BY')[0].text,
             coauthors = await _parse_coauthor(element.xpath('./COAUTHOR')),
             legal = (len(element.xpath('./GENSEC/LEGAL/*')) > (len(element.xpath('./GENSEC/ILLEGAL/*')) + len(element.xpath('./GENSEC/DISCARD/*')))),
-            quorum = (len(element.xpath('./APPROVALS')[0].text.split(':')) > await _get_quorum())
+            quorum = len(await _parse_approvals(element.xpath('./APPROVALS'))) > await _get_quorum()
         )
         parsed_xml.append(parsed_element)
     return parsed_xml
