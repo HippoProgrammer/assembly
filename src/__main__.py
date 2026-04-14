@@ -332,16 +332,25 @@ async def user(ctx: discord.ApplicationContext, user_role) -> None:
 
 @bot.slash_command(name="thread", description="Set proposal thread channel")
 @discord.default_permissions(administrator = True)
-@discord.option("thread_channel", description="Which channel should have proposal threads automatically created in it", type=discord.SlashCommandOptionType.channel)
+@discord.option("thread_channel", description="Which forum channel should have proposal threads automatically created in it", type=discord.SlashCommandOptionType.channel)
 async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
-    await postgres.channelref_add(classes.auth.Channel().fromAttributeValues(kind = 'thread', identifier=thread_channel.id))
-    logger.info('Thread channel set')
-    
-    embed = discord.Embed(description="Thread channel has been successfully set!")
-    logger.debug('Embed object created')
-    
-    await ctx.respond(embed = embed, ephemeral = True)
-    logger.info('Success embed sent')
+    if type(thread_channel) is discord.ForumChannel:
+        await postgres.channelref_add(classes.auth.Channel().fromAttributeValues(kind = 'thread', identifier=thread_channel.id))
+        logger.info('Thread channel set')
+        
+        embed = discord.Embed(description="Thread channel has been successfully set!")
+        logger.debug('Embed object created')
+        
+        await ctx.respond(embed = embed, ephemeral = True)
+        logger.info('Success embed sent')
+    else:
+        logger.info('Channel is not forum channel!')
+        
+        embed = discord.Embed(description="Thread channel has not been set!")
+        logger.debug('Embed object created')
+
+        embed.set_footer(text="Please provide a forum-type channel.")
+        logger.info('Failure embed sent')
 
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
