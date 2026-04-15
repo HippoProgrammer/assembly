@@ -1,4 +1,4 @@
-py-cord # Discord API wrapper
+py-cord==2.7.2 # Discord API wrapper
 psycopg[binary] # Postgres connector
 psycopg_pool # Postgres connection pool
 aiohttp # Async HTTP requests

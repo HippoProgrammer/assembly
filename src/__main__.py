@@ -34,139 +34,6 @@ logger.debug('Database object created')
 bot = discord.Bot() # create a bot instance
 logger.debug('Bot object created')
 
-# define a method of creating threads
-async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
-    """Given a Proposal object, create a thread with its information in a designated channel and add that information to the IFVQueue table."""
-    channel = bot.get_channel(await postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
-    logger.debug('Thread channel object found')
-
-    name = proposal.name # reassign name
-    id = proposal.id # reassign id
-    author = proposal.author.replace('_',' ').title() # replace underscores with spaces and capitalize author name
-    if proposal.coauthors: # if there are coauthors
-        coauthors = ', '.join(proposal.coauthors).replace('_',' ').title() # do the same formatting for them
-    else: # otherwise
-        coauthors = 'N/A' # mark as N/A
-    link = f'[Link to proposal text](https://nationstates.net/page=UN_view_proposal/id={id})' # format the link in Markdown syntax
-    logger.debug('Proposal information formatted')
-
-    embed = discord.Embed(
-        title=name,
-        description=f"Author: {author} | Coauthor(s): {coauthors}\n{link}" # add coauthor support later
-    ) # create an embed using this information
-    logger.debug('Embed object created')
-
-    thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
-    logger.info('Thread created')
-
-    message = thread.starting_message # get the message just sent
-    logger.debug('Message object found')
-
-    await message.add_reaction('🟢') # add required reactions
-    await message.add_reaction('🔴')
-    logger.info('Reactions added')
-
-    await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
-    logger.info('Proposal added to IFVQueue')
-
-# define a method of fetching proposals
-async def _fetch_proposals() -> None:
-    """Fetch World Assembly proposals from the NS API, for both councils, into the database."""
-    for council in [1,2]: # for each council
-        logger.debug('New council')
-
-        proposals = await io.ns.parse_proposals(council) # load a parsed version of the proposals from the API   
-        logger.info('Proposal data fetched from API')
-
-        for proposal in proposals: # for each proposal
-            if proposal.legal and proposal.quorum:
-                logger.debug('Proposal legal and at quorum')
-
-                await postgres.nsqueue_add(proposal) # add it to the NSQueue table
-                logger.info('Proposal added to NSQueue')
-
-                await _create_thread_ifv_for_proposal(proposal) # create a thread and add it to the IFVQueue table
-                logger.info('Proposal thread being created')
-        logger.info('Proposal data parsed and stored')
-
-# define a method to check user perms for slash commands
-async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
-    """Check if the permissions of a supplied user match those stored in the database."""
-
-    authorised_role_id = await postgres.botperms_get_by_kind(check_kind) # fetch the id of the actual authorised role from the DB
-    logger.debug('Authorised role ID fetched from DB')
-
-    if authorised_role_id: # if it exists
-        authorised_role = await ctx.guild.fetch_role(authorised_role_id) # fetch the Role object from the Discord API using the id
-        logger.debug('Authorised role object found')
-
-        if authorised_role in ctx.user.roles: # if the user has the Role
-            logger.info('User has authorised role, approving')
-            return True # they are authorised
-        else: # otherwise
-            logger.info('User does not have authorised role, rejecting')
-            return False # they are not authorised
-    else: # if the id does not exist, it must not have been set
-        logger.info('Authorised role ID not set, rejecting')
-        return False # so nobody is authorised
-
-# define a method to get the embed for the WA queue
-async def _get_queue_embed() -> discord.Embed:
-    """Get an embed with the World Assembly proposal queue included."""
-    await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
-
-    queue = await postgres.nsqueue_get_all_legal_limited() # fetch all proposals in the NSQueue table
-    logger.debug('Proposals fetched from DB')
-
-    table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
-    logger.debug('Table header created')
-
-    for proposal in queue: # for each fetched proposal
-        logger.debug('New proposal')
-
-        ifv = await postgres.ifvqueue_get_by_id(proposal.id) # get its corresponding IFV entry
-        logger.debug('Proposal IFV entry fetched from DB')
-
-        name = proposal.name # redefine the name
-
-        if queue.index(proposal) <=2: # if the proposal is within the top 3
-            status = 'Soon-to-vote' # it is soon-to-vote
-        else: # otherwise
-            status = 'Quorum' # it is merely at quorum
-
-        if ifv.ifvauthor == None: # if no IFV author is listed
-            author = 'N/A' # represent this in a human-readable format
-        else: # if one is listed
-            author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
-
-        if ifv.ifvlink == None: # if no IFV link is listed
-            link = 'N/A' # represent this in a human-readable format
-        else: # if one is listed
-            link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
-        
-        reactions = bot.get_channel(ifv.thread).starting_message.reactions
-        green = [react for react in reactions if react.emoji == '🟢'][0].count
-        red = [react for react in reactions if react.emoji == '🔴'][0].count
-
-        if green == red:
-            emoji = '🟢/🔴'
-        elif green > red:
-            emoji = '🟢'
-        else:
-            emoji = '🔴'
-        
-        logger.debug('Proposal information formatted')
-
-        table += f"{emoji} | {name} | {status} | {author} | {link} \n" # add all this data to the table
-        logger.debug('Proposal information added to table')
-    embed = discord.Embed(
-        title = 'WA Queue',
-        description = table,
-        timestamp = datetime.datetime.now()
-    ) # put the table in an embed
-    logger.info('Embed object created')
-    return embed # return it
-
 # define class for IFV modals
 class IFVSelectionModal(discord.ui.DesignerModal):
     def __init__(self, user_id:int, action:str, options_data:list, *args, **kwargs) -> None:
@@ -248,6 +115,11 @@ class IFVSelectionModal(discord.ui.DesignerModal):
 
 # define class for IFV view
 class IFVView(discord.ui.View):
+    def __init__(self, council:int, *args, **kwargs):
+        super().__init__(*args, **kwargs) # pass args and kwargs to base class
+        logger.debug('Args and kwargs passed to base Modal')
+        
+        self.council = council
     async def _button(self, button, interaction):
         """Private method to handle button callbacks."""
         action = button.custom_id # redefine some basic information
@@ -270,25 +142,206 @@ class IFVView(discord.ui.View):
         logger.info('Modal submitted, embed refreshed')
 
     @discord.ui.button(label="Accept IFV", style=discord.ButtonStyle.success, custom_id='accept') # accept IFV button
-    async def accept(self, button, interaction): # pass onto _button handler
+    async def accept(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
         await self._button(button, interaction)
 
     @discord.ui.button(label="Submit IFV", style=discord.ButtonStyle.primary, custom_id='submit') # submit IFV button
-    async def submit(self, button, interaction): # pass onto _button handler
+    async def submit(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
         await self._button(button, interaction)
 
     @discord.ui.button(label="Remove IFV", style=discord.ButtonStyle.danger, custom_id='remove') # remove IFV button
-    async def remove(self, button, interaction): # pass onto _button handler
+    async def remove(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
         await self._button(button, interaction)
     
     @discord.ui.button(label="Refresh Queue", style=discord.ButtonStyle.secondary, custom_id='refresh') # refresh embed button
-    async def refresh(self, button, interaction):
-        await interaction.edit_original_response(view=self, embed = await _get_queue_embed()) # refresh embed
+    async def refresher(self, button:discord.ui.Button, interaction:discord.Interaction):
+        await interaction.edit_original_response(view=self, embed = await _get_queue_embed(council = self.council)) # refresh embed
         logger.info('Embed refreshed at user command')
 
     async def on_error(self, error, item, interaction): # deprecated
         print(f"Error in {item}: {error}")
         traceback.print_exception(type(error), error, error.__traceback__)
+
+# define a method of creating threads
+async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
+    """Given a Proposal object, create a thread with its information in a designated channel and add that information to the IFVQueue table."""
+    channel = bot.get_channel(await postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
+    logger.debug('Thread channel object found')
+
+    name = proposal.name # reassign name
+    id = proposal.id # reassign id
+    author = proposal.author.replace('_',' ').title() # replace underscores with spaces and capitalize author name
+    if proposal.coauthors: # if there are coauthors
+        coauthors = ', '.join(proposal.coauthors).replace('_',' ').title() # do the same formatting for them
+    else: # otherwise
+        coauthors = 'N/A' # mark as N/A
+    link = f'[Link to proposal text](https://nationstates.net/page=UN_view_proposal/id={id})' # format the link in Markdown syntax
+    logger.debug('Proposal information formatted')
+
+    embed = discord.Embed(
+        title=name,
+        description=f"Author: {author} | Coauthor(s): {coauthors}\n{link}" # add coauthor support later
+    ) # create an embed using this information
+    logger.debug('Embed object created')
+
+    thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
+    logger.info('Thread created')
+
+    message = thread.starting_message # get the message just sent
+    logger.debug('Message object found')
+
+    await message.add_reaction('🟢') # add required reactions
+    await message.add_reaction('🔴')
+    logger.info('Reactions added')
+
+    await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
+    logger.info('Proposal added to IFVQueue')
+
+# define a method of fetching proposals
+async def _fetch_proposals() -> None:
+    """Fetch World Assembly proposals from the NS API, for both councils, into the database."""
+    for council in [1,2]: # for each council
+        logger.debug('New council')
+
+        proposals = await io.ns.parse_proposals(council) # load a parsed version of the proposals from the API   
+        logger.info('Proposal data fetched from API')
+
+        for proposal in proposals: # for each proposal
+            if proposal.legal and proposal.quorum:
+                logger.debug('Proposal legal and at quorum')
+
+                await postgres.nsqueue_add(proposal) # add it to the NSQueue table
+                logger.info('Proposal added to NSQueue')
+
+                await _create_thread_ifv_for_proposal(proposal) # create a thread and add it to the IFVQueue table
+                logger.info('Proposal thread being created')
+        logger.info('Proposal data parsed and stored')
+
+# define a method to check user perms for slash commands
+async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
+    """Check if the permissions of a supplied user match those stored in the database."""
+
+    authorised_role_id = await postgres.botperms_get_by_kind(check_kind) # fetch the id of the actual authorised role from the DB
+    logger.debug('Authorised role ID fetched from DB')
+
+    if authorised_role_id: # if it exists
+        authorised_role = await ctx.guild.fetch_role(authorised_role_id) # fetch the Role object from the Discord API using the id
+        logger.debug('Authorised role object found')
+
+        if authorised_role in ctx.user.roles: # if the user has the Role
+            logger.info('User has authorised role, approving')
+            return True # they are authorised
+        else: # otherwise
+            logger.info('User does not have authorised role, rejecting')
+            return False # they are not authorised
+    else: # if the id does not exist, it must not have been set
+        logger.info('Authorised role ID not set, rejecting')
+        return False # so nobody is authorised
+
+# define a method to get the embed for the WA queue
+async def _get_queue_embed(council:int) -> discord.Embed:
+    """Get an embed with the World Assembly proposal queue included."""
+    await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
+
+    queue = await postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
+    logger.debug('Proposals fetched from DB')
+
+    table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
+    logger.debug('Table header created')
+
+    for proposal in queue: # for each fetched proposal
+        logger.debug('New proposal')
+
+        ifv = await postgres.ifvqueue_get_by_id(proposal.id) # get its corresponding IFV entry
+        logger.debug('Proposal IFV entry fetched from DB')
+
+        name = proposal.name # redefine the name
+
+        if queue.index(proposal) <=2: # if the proposal is within the top 3
+            status = 'Soon-to-vote' # it is soon-to-vote
+        else: # otherwise
+            status = 'Quorum' # it is merely at quorum
+
+        if ifv.ifvauthor == None: # if no IFV author is listed
+            author = 'N/A' # represent this in a human-readable format
+        else: # if one is listed
+            author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
+
+        if ifv.ifvlink == None: # if no IFV link is listed
+            link = 'N/A' # represent this in a human-readable format
+        else: # if one is listed
+            link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
+        
+        reactions = bot.get_channel(ifv.thread).starting_message.reactions
+
+        logger.debug(reactions)
+        logger.debug(ifv.toSQLValues())
+
+        green = [react for react in reactions if react.emoji == '🟢'][0].count
+        red = [react for react in reactions if react.emoji == '🔴'][0].count
+
+        if green == red:
+            emoji = '🟢/🔴'
+        elif green > red:
+            emoji = '🟢'
+        else:
+            emoji = '🔴'
+        
+        logger.debug('Proposal information formatted')
+
+        table += f"{emoji} | {name} | {status} | {author} | {link} \n" # add all this data to the table
+        logger.debug('Proposal information added to table')
+    
+    if council == 1:
+        chamber = 'GA'
+    else:
+        chamber = 'SC'
+    embed = discord.Embed(
+        title = f'{chamber} Queue',
+        description = table,
+        timestamp = datetime.datetime.now()
+    ) # put the table in an embed
+    logger.info('Embed object created')
+    return embed # return it
+
+async def _show_queue(ctx: discord.ApplicationContext, council:int):
+    if await _check_perms(ctx, 'user'):
+        await ctx.defer(ephemeral = True)
+        logger.info('Fetching queue embed')
+        embed = await _get_queue_embed(council = council)
+        logger.info('Queue embed fetched')
+
+        await ctx.respond(embed = embed, ephemeral = True, view=IFVView(council = council))
+        logger.info('Queue embed sent')
+    else:
+        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
+        logger.debug('Embed object created')
+
+        await ctx.respond(embed = embed, ephemeral = True)
+        logger.info('Error embed sent')
+
+async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_users:bool):
+    if await _check_perms(ctx, 'admin'):
+        await ctx.defer() # the deferral must be here so the 'No Permissions' embed can be sent ephemerally
+        logger.info('Fetching queue embed')
+        embed = await _get_queue_embed(council = council)
+        logger.info('Queue embed fetched')
+
+        if ping_users:
+            ping = await postgres.botperms_get_by_kind('user')
+            logger.debug('Ping role id found')
+
+            await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView(council = council))
+            logger.info('Queue embed sent (announced) and pinged')
+        else:
+            await ctx.respond(embed = embed, ephemeral = False, view=IFVView(council = council))
+            logger.info('Queue embed sent (announced)')
+    else:
+        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
+        logger.debug('Embed object created')
+
+        await ctx.respond(embed = embed, ephemeral = True)
+        logger.info('Error embed sent')
 
 # log when the bot starts up and has configured the database successfully
 @bot.event
@@ -345,7 +398,7 @@ async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
         logger.info('Success embed sent')
     else:
         logger.info('Channel is not forum channel!')
-        
+
         embed = discord.Embed(description="Thread channel has not been set!")
         logger.debug('Embed object created')
 
@@ -369,49 +422,31 @@ async def fetch_proposals(ctx: discord.ApplicationContext) -> None:
     await ctx.respond(embed = embed, ephemeral = True)
     logger.info('Response embed sent')
 
+queue = bot.create_group("queue", "Display the queue")
+ga = queue.create_subgroup("ga", "General Assembly")
+sc = queue.create_subgroup("sc", "Security Council")
+
 # create slash command for displaying fetched proposals
-@bot.slash_command(name="queue", description="Display all proposals currently in the queue")
-async def show_queue(ctx: discord.ApplicationContext) -> None:
-    await ctx.defer()
-    if await _check_perms(ctx, 'user'):
-        logger.info('Fetching queue embed')
-        embed = await _get_queue_embed()
-        logger.info('Queue embed fetched')
-
-        await ctx.respond(embed = embed, ephemeral = True, view=IFVView())
-        logger.info('Queue embed sent')
-    else:
-        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
-        logger.debug('Embed object created')
-
-        await ctx.respond(embed = embed, ephemeral = True)
-        logger.info('Error embed sent')
+@ga.command(name="show", description="Display the queue to the current user only.")
+async def show_ga_queue(ctx: discord.ApplicationContext) -> None:
+    await _show_queue(ctx = ctx, council = 1)
 
 # and for advertising fetched proposals
-@bot.slash_command(name="announce_queue", description="Announce all proposals currently in the queue to the current channel.")
+@ga.command(name="announce", description="Announce all proposals currently in the queue to the current channel.")
 @discord.option("ping_users", description="Whether or not to ping the specified user role.", type=discord.SlashCommandOptionType.boolean)
-async def announce_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
-    await ctx.defer()
-    if await _check_perms(ctx, 'admin'):
-        logger.info('Fetching queue embed')
-        embed = await _get_queue_embed()
-        logger.info('Queue embed fetched')
+async def announce_ga_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
+    await _announce_queue(ctx = ctx, council = 1, ping_users = ping_users)
 
-        if ping_users:
-            ping = await postgres.botperms_get_by_kind('user')
-            logger.debug('Ping role id found')
+# create slash command for displaying fetched proposals, but this time for the SC
+@sc.command(name="show", description="Display the queue to the current user only.")
+async def show_sc_queue(ctx: discord.ApplicationContext) -> None:
+    await _show_queue(ctx = ctx, council = 2)
 
-            await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView())
-            logger.info('Queue embed sent (announced) and pinged')
-        else:
-            await ctx.respond(embed = embed, ephemeral = False, view=IFVView())
-            logger.info('Queue embed sent (announced)')
-    else:
-        embed = discord.Embed(title = 'No Permissions', description = 'You do not have the required permissions to run this command.')
-        logger.debug('Embed object created')
-
-        await ctx.respond(embed = embed, ephemeral = True)
-        logger.info('Error embed sent')
+# and for advertising fetched proposals
+@sc.command(name="announce", description="Announce all proposals currently in the queue to the current channel.")
+@discord.option("ping_users", description="Whether or not to ping the specified user role.", type=discord.SlashCommandOptionType.boolean)
+async def announce_sc_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
+    await _announce_queue(ctx = ctx, council = 2, ping_users = ping_users)
 
 async def main() -> None:
     try:

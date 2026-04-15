@@ -16,6 +16,7 @@ async def _query_proposals(council: int):
     async with aiohttp.ClientSession() as session:
         async with session.get(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=proposals') as response:
             xmlstr = await response.text()
+            logger.debug(xmlstr)
             xmltree = etree.fromstring(xmlstr)
             proposals = xmltree.xpath('/WA/PROPOSALS/PROPOSAL')
             return proposals

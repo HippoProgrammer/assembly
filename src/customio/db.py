@@ -108,7 +108,7 @@ class Database:
                     return proposal
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def nsqueue_get_all_legal_limited(self, limit = 7) -> list:
+    async def nsqueue_get_all_legal_by_council_limited(self, council = 1, limit = 7) -> list:
         """Get all proposals that are legal from the NSQueue, up to the specified limit"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
@@ -118,9 +118,9 @@ class Database:
 
                     await cur.execute("""
                     SELECT * FROM NSQueue 
-                    WHERE Legal
+                    WHERE Legal AND Council = %s 
                     LIMIT %s;
-                    """, [limit]) # select all legal proposals, up to the queue limit of seven
+                    """, [council, limit]) # select all legal proposals, up to the queue limit of seven
                     logger.info('Successful query')
 
                     SQLqueue = await cur.fetchall() # fetch them all
