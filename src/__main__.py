@@ -107,7 +107,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
                 await interaction.respond(embed = failure_invalid_link, ephemeral = True) # send an embed informing the user that their link was invalid
                 logger.debug('Link invalid, sent error message')
         elif self.action == 'remove': # if valid and remove is the action
-            await postgres.ifvqueue_remove(id = self.get_item('select').values[0]) # remove the accepted mark and the link from the DB
+            await postgres.ifvqueue_remove_author_link(id = self.get_item('select').values[0]) # remove the accepted mark and the link from the DB
             logger.debug('IFVQueue updated with removed data')
 
             await interaction.respond(embed = success, ephemeral = True) # send a success message

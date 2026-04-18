@@ -265,15 +265,16 @@ class Database:
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def ifvqueue_remove(self, id:str):
+    async def ifvqueue_remove_author_link(self, id:str):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
                     logger.debug('Cursor opened')
                     await cur.execute("""
-                    DELETE FROM IFVQueue
-                    WHERE ID = %s;
+                    UPDATE IFVQueue
+                    SET IFVAuthor = NULL,
+                    IFVLink = NULL;
                     """, [id])
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
