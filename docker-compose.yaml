@@ -9,42 +9,68 @@ services: # define services
     restart: always # if errors occur, restart
     secrets: # pass secrets to the container
       - discord-bot-token
-      - db-password
+      - app-db-password
     environment: # pass location of secrets to the container
       ASSEMBLY_TOKEN_FILE: /run/secrets/discord-bot-token
-      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+      POSTGRES_PASSWORD_FILE: /run/secrets/app-db-password
+      NS_USER_AGENT: idinist_imauggland
     networks: # allow the two containers to communicate
-      - db-local
+      - app-local
+
+  ns-assembly-akari: # akari SSE client
+    build: https://github.com/Merethin/Akari.git # build using the latest image from the GitHub repo
+    depends_on: # delay startup until the DB is ready to accept connections
+      ns-assembly-db:
+        condition: service_healthy
+    restart: always # if errors occur, restart
+    secrets: # pass secrets to the container
+      - akari-db-password
+    environment: # pass connection info to the container
+      NS_USER_AGENT: idinist_imauggland
+      POSTGRES_URL: postgresql://ns-akari:a@ns-assembly-db:5432/ns-akri
+    networks: # allow the containers to communicate
+      - akari-local
+    volumes: # bind the config directory into the container
+      - ./conf/akari:/config
 
   ns-assembly-db: # postgres DB
-    hostname: ns-assembly-db # assign a hostname for easier connection
+    hostname: ns_assembly_db # assign a hostname for easier connection
     image: postgres:18.3-alpine3.23 # use the latest Postgres Alpine image
     shm_size: 128mb # define a memory limit
     restart: always # restart if errors occur
     environment: # pass location of secrets to the container, and define non-secret configuration info
-      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
-      POSTGRES_USER: "ns-assembly"
-      POSTGRES_DB: "ns-assembly"
+      POSTGRES_PASSWORD_FILE: /run/secrets/sudo-db-password
+      APP_PASSWORD_FILE: /run/secrets/app-db-password
+      AKARI_PASSWORD_FILE: /run/secrets/akari-db-password
     secrets: # pass secrets to the container
-      - db-password
+      - app-db-password
+      - akari-db-password
+      - sudo-db-password
     volumes: # map a volume to the Postgres data directory
-      - db-data:/var/lib/postgresql
+      - db-data:/var/lib/postgresql # data
+      - ./sql/init:/docker-entrypoint-initdb.d # initialization scripts
     networks: # allow the two containers to communicate
-      - db-local
+      - app-local
+      - akari-local
     healthcheck: # set up a health check to confirm when the DB is ready
-      test: ["CMD-SHELL", "pg_isready -U ns-assembly -d ns-assembly"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
-
+  
 secrets:  # define secrets
   discord-bot-token:
-    file: ./bot.token
-  db-password:
-    file: ./db.password
+    file: ./conf/secrets/token.conf
+  app-db-password:
+    file: ./conf/secrets/appdb.conf
+  akari-db-password:
+    file: ./conf/secrets/akaridb.conf
+  sudo-db-password:
+    file: ./conf/secrets/sudodb.conf
   
 volumes: # allow Docker to handle volume storage
   db-data:
 
 networks: # allow Docker to handle networking
-  db-local:
+  app-local:
+  akari-local:

@@ -19,57 +19,6 @@ class Database:
         """Configure a Database and make it ready to accept connections"""
         await self.connection_pool.open() # open the connection pool so connections can actually be made
         logger.info('ConnectionPool opened')
-
-        # check if the requisite tables already exist, if not, create them
-        async with self.connection_pool.connection() as conn: # get a connection from the pool
-            logger.debug('DB connection opened from pool')
-            async with conn.cursor() as cur: # open a cursor
-                logger.debug('Cursor opened')
-                await cur.execute("""
-                    CREATE TABLE IF NOT EXISTS NSQueue (
-                    ID TEXT PRIMARY KEY,
-                    Council SMALLINT CHECK (Council = 1 OR Council = 2),
-                    Name TEXT NOT NULL,
-                    Category TEXT NOT NULL,
-                    Author TEXT NOT NULL,
-                    Coauthors TEXT ARRAY[3],
-                    Legal BOOL NOT NULL,
-                    Quorum BOOL NOT NULL
-                    );
-                    """) # create a table for storing queued proposal information, direct from the NS API
-                logger.info('NSQueue table created')
-                await cur.execute(""" 
-                    CREATE TABLE IF NOT EXISTS IFVQueue (
-                    ID TEXT PRIMARY KEY,
-                    Name TEXT NOT NULL,
-                    Thread BIGINT NOT NULL,
-                    IFVAuthor BIGINT,
-                    IFVLink TEXT
-                    );
-                    """) # create a table for storing IFV information, such as assigned authors and regional positions. 
-                logger.info('IFVQueue table created')
-                await cur.execute("""
-                    CREATE TABLE IF NOT EXISTS BotPerms (
-                    Kind TEXT PRIMARY KEY,
-                    Identifier BIGINT NOT NULL
-                    );
-                    """) # create a table for storing perms
-                logger.info('BotQueue table created')
-                await cur.execute("""
-                    CREATE TABLE IF NOT EXISTS ChannelReference (
-                    Kind TEXT PRIMARY KEY,
-                    Identifier BIGINT NOT NULL
-                    );
-                    """) # create a table for storing channels
-                logger.info('ChannelReference table created')
-                await cur.execute("""
-                    CREATE INDEX IF NOT EXISTS NSQueue_ID_index ON NSQueue (ID);
-                    """) # create relevant indexes on frequently-queried tables
-                await cur.execute("""
-                    CREATE INDEX IF NOT EXISTS IFVQueue_Author_index on IFVQueue (IFVAuthor);
-                    """)
-                logger.info('Indexes created')
-                await conn.commit() # save changes to DB
     # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal) -> None:
         """Add a Proposal to the NSQueue"""

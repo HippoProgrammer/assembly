@@ -1,0 +1,17 @@
+[input]
+url = "https://www.nationstates.net/api/all"
+workers = 2
+
+[output.console]
+enabled = false
+
+[output.file]
+enabled = false
+
+[output.rmq]
+enabled = false
+
+[output.postgres]
+enabled = true
+skip_rmb_content = true
+include = ["rsfloor","rssubmit","rsremsub","rsquorum","rsmodrem"]

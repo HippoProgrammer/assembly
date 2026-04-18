@@ -21,11 +21,11 @@ logger.setLevel(logging.DEBUG) # set the logs to output at debug verbosity
 logger.info('Logging started')
 
 # read envvars
-token, pgpass = io.env.load_envvars() # load environment variables (bot token, postgres db password)
+token, pgpass = io.env.load_secrets_from_envvars() # load environment variables (bot token, postgres db password)
 logger.info('Environment variables loaded')
 
 # set up the database
-conn_uri = f"postgresql://ns-assembly:{pgpass}@ns-assembly-db:5432/ns-assembly" # create a standard postgres connection URI by inserting the loaded password
+conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_assembly" # create a standard postgres connection URI by inserting the loaded password
 logger.debug('Connection URI created')
 postgres = io.db.Database(conn_uri) # create a DB instance
 logger.debug('Database object created')

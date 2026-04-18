@@ -4,7 +4,7 @@ import logging
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script
 
-def load_envvars():
+def load_secrets_from_envvars():
     # load envvars 
     token_file = str(os.getenv("ASSEMBLY_TOKEN_FILE"))
     pgpass_file = str(os.getenv("POSTGRES_PASSWORD_FILE"))
@@ -27,3 +27,7 @@ def load_envvars():
     with open(pgpass_file,'r') as file:
         pgpass = file.read()
     return token, pgpass
+
+def load_useragent_from_envvars():
+    useragent_nation = str(os.getenv("NS_USER_AGENT"))
+    return useragent_nation

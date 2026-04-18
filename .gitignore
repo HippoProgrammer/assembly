@@ -1,5 +1,4 @@
-bot.token
-db.password
+**/*.conf
 
 **/__pycache__/**
 **/*.log
