@@ -373,7 +373,7 @@ async def admin(ctx: discord.ApplicationContext, admin_role) -> None:
 
 @bot.slash_command(name="user", description="Set user role")
 @discord.default_permissions(administrator = True)
-@discord.option("user_role", description="Which role should be able to issue commands to the bot (note admins are automatically included)", type=discord.SlashCommandOptionType.role)
+@discord.option("user_role", description="Which role should be able to issue commands to the bot (note admins are not automatically included)", type=discord.SlashCommandOptionType.role)
 async def user(ctx: discord.ApplicationContext, user_role) -> None:
     await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'user', identifier=user_role.id))
     logger.info('User role set')
