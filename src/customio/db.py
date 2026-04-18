@@ -150,6 +150,27 @@ class Database:
                     await conn.commit() # save to DB
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
+    async def ifvqueue_check_exists_by_id(self, id:str) -> bool:
+        """Check if an IFV exists in the IFVQueue with the specified ID"""
+        try:
+            async with self.connection_pool.connection() as conn:
+                logger.debug('DB connection opened from pool')
+                async with conn.cursor() as cur:
+                    logger.debug('Cursor opened')
+
+                    await cur.execute("""
+                    SELECT 1 FROM IFVQueue
+                    WHERE ID = %s
+                    LIMIT 1;""", [id]) # return 1 or 0 depending on whether item exists
+
+                    response = await cur.fetchone()
+
+                    if response == None:
+                        return False
+                    else:
+                        return True
+        except psycopg_pool.PoolTimeout:
+            self.connection_self.connection_pool.check()
     async def ifvqueue_get_by_id(self, id:str) -> classes.ifv.IFV:
         """Get an IFV from the IFVQueue with the specified ID"""
         try:

@@ -165,37 +165,40 @@ class IFVView(discord.ui.View):
 # define a method of creating threads
 async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
     """Given a Proposal object, create a thread with its information in a designated channel and add that information to the IFVQueue table."""
-    channel = bot.get_channel(await postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
-    logger.debug('Thread channel object found')
-
     name = proposal.name # reassign name
     id = proposal.id # reassign id
-    author = proposal.author.replace('_',' ').title() # replace underscores with spaces and capitalize author name
-    if proposal.coauthors: # if there are coauthors
-        coauthors = ', '.join(proposal.coauthors).replace('_',' ').title() # do the same formatting for them
-    else: # otherwise
-        coauthors = 'N/A' # mark as N/A
-    link = f'[Link to proposal text](https://nationstates.net/page=UN_view_proposal/id={id})' # format the link in Markdown syntax
-    logger.debug('Proposal information formatted')
 
-    embed = discord.Embed(
-        title=name,
-        description=f"Author: {author} | Coauthor(s): {coauthors}\n{link}" # add coauthor support later
-    ) # create an embed using this information
-    logger.debug('Embed object created')
+    exists = await postgres.ifvqueue_check_exists_by_id(id)
+    if not exists: # if it doesn't exist already - note this check will erroneously succeed if the DB addition fails but thread creation succeeds
+        channel = bot.get_channel(await postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
+        logger.debug('Thread channel object found')
 
-    thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
-    logger.info('Thread created')
+        author = proposal.author.replace('_',' ').title() # replace underscores with spaces and capitalize author name
+        if proposal.coauthors: # if there are coauthors
+            coauthors = ', '.join(proposal.coauthors).replace('_',' ').title() # do the same formatting for them
+        else: # otherwise
+            coauthors = 'N/A' # mark as N/A
+        link = f'[Link to proposal text](https://nationstates.net/page=UN_view_proposal/id={id})' # format the link in Markdown syntax
+        logger.debug('Proposal information formatted')
 
-    message = thread.starting_message # get the message just sent
-    logger.debug('Message object found')
+        embed = discord.Embed(
+            title=name,
+            description=f"Author: {author} | Coauthor(s): {coauthors}\n{link}" # add coauthor support later
+        ) # create an embed using this information
+        logger.debug('Embed object created')
 
-    await message.add_reaction('🟢') # add required reactions
-    await message.add_reaction('🔴')
-    logger.info('Reactions added')
+        thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
+        logger.info('Thread created')
 
-    await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
-    logger.info('Proposal added to IFVQueue')
+        message = thread.starting_message # get the message just sent
+        logger.debug('Message object found')
+
+        await message.add_reaction('🟢') # add required reactions
+        await message.add_reaction('🔴')
+        logger.info('Reactions added')
+
+        await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
+        logger.info('Proposal added to IFVQueue')
 
 # define a method of fetching proposals
 async def _fetch_proposals() -> None:
@@ -277,15 +280,13 @@ async def _get_queue_embed(council:int) -> discord.Embed:
         logger.debug(reactions)
         logger.debug(ifv.toSQLValues())
 
-        green = [react for react in reactions if react.emoji == '🟢'][0].count
-        red = [react for react in reactions if react.emoji == '🔴'][0].count
+        #green = [react for react in reactions if react.emoji == '🟢'][0].count
+        #red = [react for react in reactions if react.emoji == '🔴'][0].count
 
-        if green == red:
+        if len(reactions) == 2: # this is potentially temporary? odd return values for reactions
             emoji = '🟢/🔴'
-        elif green > red:
-            emoji = '🟢'
         else:
-            emoji = '🔴'
+            emoji = reactions[0].emoji
         
         logger.debug('Proposal information formatted')
 
