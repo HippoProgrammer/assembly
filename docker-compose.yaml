@@ -1,39 +1,43 @@
 name: ns-assembly # define the name of the app
 
 services: # define services
-  ns-assembly-app: # main Python app
+  app: # main Python app
     build: ./ # build using a Dockerfile in the local directory
     depends_on: # delay startup until the DB is ready to accept connections
-      ns-assembly-db:
+      db:
         condition: service_healthy
     restart: always # if errors occur, restart
     secrets: # pass secrets to the container
-      - discord-bot-token
+      - bot-token
       - app-db-password
     environment: # pass location of secrets to the container
-      ASSEMBLY_TOKEN_FILE: /run/secrets/discord-bot-token
+      ASSEMBLY_TOKEN_FILE: /run/secrets/bot-token
       POSTGRES_PASSWORD_FILE: /run/secrets/app-db-password
       NS_USER_AGENT: idinist_imauggland
     networks: # allow the two containers to communicate
       - app-local
 
-  ns-assembly-akari: # akari SSE client
+  akari: # akari SSE client
     build: https://github.com/Merethin/Akari.git # build using the latest image from the GitHub repo
     depends_on: # delay startup until the DB is ready to accept connections
-      ns-assembly-db:
+      db:
         condition: service_healthy
     restart: always # if errors occur, restart
     secrets: # pass secrets to the container
       - akari-db-password
     environment: # pass connection info to the container
       NS_USER_AGENT: idinist_imauggland
-      POSTGRES_URL: postgresql://ns-akari:a@ns-assembly-db:5432/ns-akri
+      DATABASE_HOST: ns_assembly_db
+      DATABASE_PORT: 5432
+      DATABASE_USER: ns_akari
+      DATABASE_NAME: ns_akari
+      DATABASE_PASSWORD_FILE: /run/secrets/akari-db-password
     networks: # allow the containers to communicate
       - akari-local
     volumes: # bind the config directory into the container
       - ./conf/akari:/config
 
-  ns-assembly-db: # postgres DB
+  db: # postgres DB
     hostname: ns_assembly_db # assign a hostname for easier connection
     image: postgres:18.3-alpine3.23 # use the latest Postgres Alpine image
     shm_size: 128mb # define a memory limit
@@ -59,7 +63,7 @@ services: # define services
       retries: 5
   
 secrets:  # define secrets
-  discord-bot-token:
+  bot-token:
     file: ./conf/secrets/token.conf
   app-db-password:
     file: ./conf/secrets/appdb.conf
