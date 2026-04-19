@@ -26,9 +26,9 @@ logger.debug(pgpass)
 logger.info('Environment variables loaded')
 
 # set up the database
-conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_assembly" # create a standard postgres connection URI by inserting the loaded password
+ns_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_assembly" # deprecated - will be switched to env vars. create a standard postgres connection URI by inserting the loaded password
 logger.debug('Connection URI created')
-postgres = io.db.Database(conn_uri) # create a DB instance
+ns_postgres = io.db.NSAssemblyDatabase(ns_conn_uri) # create a DB instance
 logger.debug('Database object created')
 
 # create the Bot object
@@ -92,14 +92,14 @@ class IFVSelectionModal(discord.ui.DesignerModal):
             await interaction.respond(embed = failure_invalid_options, ephemeral = True) # send an embed informing the user that they selected an invalid option
             logger.debug('Modal invalid, sent error message')
         elif self.action == 'accept': # if valid and accept is the action
-            await postgres.ifvqueue_update_author_by_id(id = self.get_item('select').values[0], author = self.user_id) # mark the IFV as accepted in the DB
+            await ns_postgres.ifvqueue_update_author_by_id(id = self.get_item('select').values[0], author = self.user_id) # mark the IFV as accepted in the DB
             logger.debug('IFVQueue updated with author')
 
             await interaction.respond(embed = success, ephemeral = True) # send a success message
             logger.debug('Sent success message')
         elif self.action == 'submit': # if valid and submit is the action
             if 'nationstates.net' not in self.get_item('link').value: # and the link does not contain invalid websites
-                await postgres.ifvqueue_update_link_by_id(id = self.get_item('select').values[0], link = self.get_item('link').value) # save the link to the IFV on the DB
+                await ns_postgres.ifvqueue_update_link_by_id(id = self.get_item('select').values[0], link = self.get_item('link').value) # save the link to the IFV on the DB
                 logger.debug('IFVQueue updated with link')
 
                 await interaction.respond(embed = success, ephemeral = True) # send a success message
@@ -108,7 +108,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
                 await interaction.respond(embed = failure_invalid_link, ephemeral = True) # send an embed informing the user that their link was invalid
                 logger.debug('Link invalid, sent error message')
         elif self.action == 'remove': # if valid and remove is the action
-            await postgres.ifvqueue_remove_author_link(id = self.get_item('select').values[0]) # remove the accepted mark and the link from the DB
+            await ns_postgres.ifvqueue_remove_author_link(id = self.get_item('select').values[0]) # remove the accepted mark and the link from the DB
             logger.debug('IFVQueue updated with removed data')
 
             await interaction.respond(embed = success, ephemeral = True) # send a success message
@@ -128,9 +128,9 @@ class IFVView(discord.ui.View):
         logger.debug('Interaction data formatted and stored')
 
         if button.custom_id == 'accept': # if the IFV is to be accepted
-            options_data = await postgres.ifvqueue_get_unauthored_limited() # fetch acceptable IFVs
+            options_data = await ns_postgres.ifvqueue_get_unauthored_limited() # fetch acceptable IFVs
         else: # otherwise
-            options_data = await postgres.ifvqueue_get_by_author(user_id) # fetch the author's IFVs
+            options_data = await ns_postgres.ifvqueue_get_by_author(user_id) # fetch the author's IFVs
         logger.debug('Option data fetched from DB')
 
         modal = IFVSelectionModal(user_id = user_id, action = action, options_data = options_data, title='IFV Modification') # put all info into a modal
@@ -169,9 +169,9 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
     name = proposal.name # reassign name
     id = proposal.id # reassign id
 
-    exists = await postgres.ifvqueue_check_exists_by_id(id)
+    exists = await ns_postgres.ifvqueue_check_exists_by_id(id)
     if not exists: # if it doesn't exist already - note this check will erroneously succeed if the DB addition fails but thread creation succeeds
-        channel = bot.get_channel(await postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
+        channel = bot.get_channel(await ns_postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
         logger.debug('Thread channel object found')
 
         author = proposal.author.replace('_',' ').title() # replace underscores with spaces and capitalize author name
@@ -198,7 +198,7 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
         await message.add_reaction('🔴')
         logger.info('Reactions added')
 
-        await postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
+        await ns_postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
         logger.info('Proposal added to IFVQueue')
 
 # define a method of fetching proposals
@@ -214,7 +214,7 @@ async def _fetch_proposals() -> None:
             if proposal.legal and proposal.quorum:
                 logger.debug('Proposal legal and at quorum')
 
-                await postgres.nsqueue_add(proposal) # add it to the NSQueue table
+                await ns_postgres.nsqueue_add(proposal) # add it to the NSQueue table
                 logger.info('Proposal added to NSQueue')
 
                 await _create_thread_ifv_for_proposal(proposal) # create a thread and add it to the IFVQueue table
@@ -225,7 +225,7 @@ async def _fetch_proposals() -> None:
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
 
-    authorised_role_id = await postgres.botperms_get_by_kind(check_kind) # fetch the id of the actual authorised role from the DB
+    authorised_role_id = await ns_postgres.botperms_get_by_kind(check_kind) # fetch the id of the actual authorised role from the DB
     logger.debug('Authorised role ID fetched from DB')
 
     if authorised_role_id: # if it exists
@@ -247,7 +247,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
     """Get an embed with the World Assembly proposal queue included."""
     await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
 
-    queue = await postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
+    queue = await ns_postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
     logger.debug('Proposals fetched from DB')
 
     table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
@@ -256,7 +256,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
     for proposal in queue: # for each fetched proposal
         logger.debug('New proposal')
 
-        ifv = await postgres.ifvqueue_get_by_id(proposal.id) # get its corresponding IFV entry
+        ifv = await ns_postgres.ifvqueue_get_by_id(proposal.id) # get its corresponding IFV entry
         logger.debug('Proposal IFV entry fetched from DB')
 
         name = proposal.name # redefine the name
@@ -330,7 +330,7 @@ async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_use
         logger.info('Queue embed fetched')
 
         if ping_users:
-            ping = await postgres.botperms_get_by_kind('user')
+            ping = await ns_postgres.botperms_get_by_kind('user')
             logger.debug('Ping role id found')
 
             await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView(council = council))
@@ -363,7 +363,7 @@ async def info(ctx: discord.ApplicationContext) -> None:
 @discord.default_permissions(administrator = True) # must be an administrator to execute]
 @discord.option("admin_role", description="Which role should be able to issue admin commands to the bot", type=discord.SlashCommandOptionType.role)
 async def admin(ctx: discord.ApplicationContext, admin_role) -> None:
-    await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'admin', identifier=admin_role.id))
+    await ns_postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'admin', identifier=admin_role.id))
     logger.info('Admin role set')
 
     embed = discord.Embed(description="Admin role has been successfully set!")
@@ -376,7 +376,7 @@ async def admin(ctx: discord.ApplicationContext, admin_role) -> None:
 @discord.default_permissions(administrator = True)
 @discord.option("user_role", description="Which role should be able to issue commands to the bot (note admins are not automatically included)", type=discord.SlashCommandOptionType.role)
 async def user(ctx: discord.ApplicationContext, user_role) -> None:
-    await postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'user', identifier=user_role.id))
+    await ns_postgres.botperms_add(classes.auth.Permission().fromAttributeValues(kind = 'user', identifier=user_role.id))
     logger.info('User role set')
     
     embed = discord.Embed(description="User role has been successfully set!")
@@ -390,7 +390,7 @@ async def user(ctx: discord.ApplicationContext, user_role) -> None:
 @discord.option("thread_channel", description="Which forum channel should have proposal threads automatically created in it", type=discord.SlashCommandOptionType.channel)
 async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
     if type(thread_channel) is discord.ForumChannel:
-        await postgres.channelref_add(classes.auth.Channel().fromAttributeValues(kind = 'thread', identifier=thread_channel.id))
+        await ns_postgres.channelref_add(classes.auth.Channel().fromAttributeValues(kind = 'thread', identifier=thread_channel.id))
         logger.info('Thread channel set')
         
         embed = discord.Embed(description="Thread channel has been successfully set!")
@@ -453,7 +453,7 @@ async def announce_sc_queue(ctx: discord.ApplicationContext,ping_users:bool) -> 
 async def main() -> None:
     try:
         logger.info('Starting DB setup scripts')
-        await postgres.setup_all() # run standard setup scripts
+        await ns_postgres.setup_all() # run standard setup scripts
         logger.info('DB setup scripts completed')
 
         logger.info('Starting bot')
@@ -467,7 +467,7 @@ async def main() -> None:
         logger.critical('Program terminating - was a SIGINT sent?')
 
         logger.info('Starting DB cleanup scripts')
-        await postgres.cleanup()
+        await ns_postgres.cleanup()
         logger.info('DB cleanup scripts completed')
 
         logger.critical('Program terminated')

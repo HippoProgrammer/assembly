@@ -13,12 +13,33 @@ class Database:
         self.connection_uri = connection_uri # save the connection URI
         logger.debug('Connection URI received')
 
-        self.connection_pool = psycopg_pool.AsyncConnectionPool(conninfo = connection_uri, min_size = 4, max_size = 16, open = False) # create a pool of connections for use later
+        self.connection_pool = psycopg_pool.AsyncConnectionPool(conninfo = connection_uri, min_size = 2, max_size = 16, open = False) # create a pool of connections for use later
         logger.info('ConnectionPool created')
     async def setup_all(self) -> None:
         """Configure a Database and make it ready to accept connections"""
         await self.connection_pool.open() # open the connection pool so connections can actually be made
         logger.info('ConnectionPool opened')
+
+class NSAkariDatabase(Database):
+    async def listen_for_new_sse_events(self,callback) -> None:
+        """Add a listener that calls callback on all new SSE events"""
+        try:
+            async with self.connection_pool.connection() as conn:
+                await conn.set_autocommit(True)
+                logger.debug('DB connection opened from pool')
+                async with conn.cursor() as cur: # open a cursor
+                    logger.debug('Cursor opened')
+
+                    await cur.execute("""
+                    LISTEN new_sse_event;
+                    """)
+                notifs = conn.notifies()
+                async for notif in notifs:
+                    callback()
+        except psycopg_pool.PoolTimeout:
+            self.connection_self.connection_pool.check()
+
+class NSAssemblyDatabase(Database):
     # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal) -> None:
         """Add a Proposal to the NSQueue"""
