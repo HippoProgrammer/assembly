@@ -2,9 +2,6 @@
 from .exceptions import *
 import logging
 
-# set up a logger
-logger = logging.getLogger(__name__) # get the logger for this script
-
 class IFV:
     def __init__(self):
         self.initialized = False

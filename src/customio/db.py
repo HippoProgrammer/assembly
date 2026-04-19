@@ -35,7 +35,25 @@ class NSAkariDatabase(Database):
                     """)
                 notifs = conn.notifies()
                 async for notif in notifs:
-                    callback()
+                    callback(notif.payload)
+        except psycopg_pool.PoolTimeout:
+            self.connection_self.connection_pool.check()
+    async def get_by_event(self, event:int):
+        try:
+            async with self.connection_pool.connection() as conn: # get a connection from the pool
+                logger.debug('DB connection opened from pool')
+                async with conn.cursor() as cur: # open a cursor
+                    logger.debug('Cursor opened')
+
+                    await cur.execute("""
+                    SELECT * FROM akari_events
+                    WHERE event = %s;
+                    """, [event]) # select all proposals with the supplied ID
+                    logger.info('Successful query')
+
+                    SQLproposal = await cur.fetchone() # fetch the event (as ID is unique there is only one)
+                    event = classes.sse.Event().fromSQLValues(SQLproposal) # convert it into an Event object
+                    return event
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
 

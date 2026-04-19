@@ -6,7 +6,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         BEGIN
             CREATE OR REPLACE FUNCTION notify_new_sse_event_on_insert() RETURNS TRIGGER as $notify_new_sse_event$
                 BEGIN
-                    NOTIFY new_sse_event;
+                    NOTIFY new_sse_event, NEW.event;
                     RETURN NULL;
                 END;
             $notify_new_sse_event$ LANGUAGE plpgsql;
