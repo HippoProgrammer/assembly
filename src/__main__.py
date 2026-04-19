@@ -25,11 +25,13 @@ token, pgpass = io.env.load_secrets_from_envvars() # load environment variables 
 logger.debug(pgpass)
 logger.info('Environment variables loaded')
 
-# set up the database
+# set up the databases
 ns_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_assembly" # deprecated - will be switched to env vars. create a standard postgres connection URI by inserting the loaded password
-logger.debug('Connection URI created')
+akari_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_akari"
+logger.debug('Connection URIs created')
 ns_postgres = io.db.NSAssemblyDatabase(ns_conn_uri) # create a DB instance
-logger.debug('Database object created')
+ns_akari = io.db.NSAkariDatabase(ns_conn_uri)
+logger.debug('Database objects created')
 
 # create the Bot object
 bot = discord.Bot() # create a bot instance
@@ -454,6 +456,7 @@ async def main() -> None:
     try:
         logger.info('Starting DB setup scripts')
         await ns_postgres.setup_all() # run standard setup scripts
+        await ns_akari.setup_all()
         logger.info('DB setup scripts completed')
 
         logger.info('Starting bot')
@@ -464,12 +467,13 @@ async def main() -> None:
         logger.warning('asyncio.exceptions.CancelledError was suppressed - was a SIGINT sent?')
         pass
     finally:
-        logger.critical('Program terminating - was a SIGINT sent?')
+        logger.info('Program terminating - was a SIGINT sent?')
 
         logger.info('Starting DB cleanup scripts')
         await ns_postgres.cleanup()
+        await ns_akari.cleanup()
         logger.info('DB cleanup scripts completed')
 
-        logger.critical('Program terminated')
+        logger.info('Program terminated')
 
 asyncio.run(main())
