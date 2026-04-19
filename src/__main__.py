@@ -140,7 +140,7 @@ class IFVView(discord.ui.View):
         await interaction.response.send_modal(modal) # send the modal
         logger.info('Modal sent - waiting for submission')
         await modal.wait() # wait until it has been submitted
-        await interaction.edit_original_response(view=self, embed = await _get_queue_embed()) # then refresh the embed with the new info
+        await interaction.edit_original_response(view=self, embed = await _get_queue_embed(council = self.council)) # then refresh the embed with the new info
         logger.info('Modal submitted, embed refreshed')
 
     @discord.ui.button(label="Accept IFV", style=discord.ButtonStyle.success, custom_id='accept') # accept IFV button
