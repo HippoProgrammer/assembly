@@ -19,6 +19,8 @@ class Database:
         """Configure a Database and make it ready to accept connections"""
         await self.connection_pool.open() # open the connection pool so connections can actually be made
         logger.info('ConnectionPool opened')
+    async def cleanup(self):
+        await self.connection_pool.close()
 
 class NSAkariDatabase(Database):
     async def listen_for_new_sse_events(self,callback) -> None:
@@ -332,5 +334,3 @@ class NSAssemblyDatabase(Database):
                     return channel
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def cleanup(self):
-        await self.connection_pool.close()
