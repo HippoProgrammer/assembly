@@ -223,6 +223,10 @@ async def _fetch_proposals() -> None:
                 logger.info('Proposal thread being created')
         logger.info('Proposal data parsed and stored')
 
+async def _new_sse_event(payload:str):
+    logger.debug('New SSE event received, checking proposals...')
+    await _fetch_proposals()
+
 # define a method to check user perms for slash commands
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
@@ -247,7 +251,6 @@ async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
 # define a method to get the embed for the WA queue
 async def _get_queue_embed(council:int) -> discord.Embed:
     """Get an embed with the World Assembly proposal queue included."""
-    await _fetch_proposals() # deprecated: in future versions this will no longer update on each command but instead on an event-driven basis
 
     queue = await ns_postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
     logger.debug('Proposals fetched from DB')
@@ -458,6 +461,10 @@ async def main() -> None:
         await ns_postgres.setup_all() # run standard setup scripts
         await ns_akari.setup_all()
         logger.info('DB setup scripts completed')
+
+        logger.info('Connecting to SSE')
+        await ns_akari.listen_for_new_sse_events(_new_sse_event)
+        logger.info('Connected to SSE')
 
         logger.info('Starting bot')
         async with bot:
