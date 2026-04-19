@@ -6,6 +6,8 @@ services: # define services
     depends_on: # delay startup until the DB is ready to accept connections
       db:
         condition: service_healthy
+      akari:
+        condition: service_started
     restart: always # if errors occur, restart
     secrets: # pass secrets to the container
       - bot-token
