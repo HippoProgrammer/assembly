@@ -467,7 +467,6 @@ async def main() -> None:
         logger.info('Bot started')
     except asyncio.exceptions.CancelledError:
         logger.warning('asyncio.exceptions.CancelledError was suppressed - was a SIGINT sent?')
-        pass
     finally:
         logger.info('Program terminating - was a SIGINT sent?')
 
