@@ -154,15 +154,7 @@ class IFVView(discord.ui.View):
     @discord.ui.button(label="Remove IFV", style=discord.ButtonStyle.danger, custom_id='remove') # remove IFV button
     async def remove(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
         await self._button(button, interaction)
-    
-    @discord.ui.button(label="Refresh Queue", style=discord.ButtonStyle.secondary, custom_id='refresh') # refresh embed button
-    async def refresher(self, button:discord.ui.Button, interaction:discord.Interaction):
-        await interaction.edit_original_response(view=self, embed = await _get_queue_embed(council = self.council)) # refresh embed
-        logger.info('Embed refreshed at user command')
 
-    async def on_error(self, error, item, interaction): # deprecated
-        print(f"Error in {item}: {error}")
-        traceback.print_exception(type(error), error, error.__traceback__)
 
 # define a method of creating threads
 async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
