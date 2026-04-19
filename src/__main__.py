@@ -414,7 +414,7 @@ async def thread(ctx: discord.ApplicationContext, thread_channel) -> None:
 # create slash command for fetching proposals
 @bot.slash_command(name="fetch", description="Manually fetch proposals from the NS API")
 async def fetch_proposals(ctx: discord.ApplicationContext) -> None:
-    await ctx.defer()
+    await ctx.defer(ephemeral=True)
     if await _check_perms(ctx, 'user'):
         logger.info('Fetching proposals')
         await _fetch_proposals()
@@ -462,7 +462,7 @@ async def main() -> None:
         logger.info('DB setup scripts completed')
 
         logger.info('Connecting to SSE')
-        await ns_akari.listen_for_new_sse_events(_new_sse_event)
+        sse_event_listener = asyncio.create_task(ns_akari.listen_for_new_sse_events(_new_sse_event))
         logger.info('Connected to SSE')
 
         logger.info('Starting bot')
@@ -474,6 +474,10 @@ async def main() -> None:
         pass
     finally:
         logger.info('Program terminating - was a SIGINT sent?')
+
+        logger.info('Disconnecting from SSE')
+        sse_event_listener.cancel()
+        logger.info('Disconnected from SSE')
 
         logger.info('Starting DB cleanup scripts')
         await ns_postgres.cleanup()

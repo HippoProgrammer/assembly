@@ -40,6 +40,8 @@ class NSAkariDatabase(Database):
                     callback(notif.payload)
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
+        except asyncio.CancelledError:
+            logger.debug('Listener cancelled')
     async def get_by_event(self, event:int):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
