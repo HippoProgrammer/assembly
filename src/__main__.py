@@ -22,7 +22,6 @@ logger.info('Logging started')
 
 # read envvars
 token, pgpass = io.env.load_secrets_from_envvars() # load environment variables (bot token, postgres db password)
-logger.debug(pgpass)
 logger.info('Environment variables loaded')
 
 # set up the databases
