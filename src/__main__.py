@@ -453,10 +453,6 @@ async def main() -> None:
         await ns_akari.setup_all()
         logger.info('DB setup scripts completed')
 
-        logger.info('Performing initial fetch')
-        await _fetch_proposals()
-        logger.info('Initial fetch completed')
-
         logger.info('Connecting to SSE')
         sse_event_listener = asyncio.create_task(ns_akari.listen_for_new_sse_events(_new_sse_event))
         logger.info('Connected to SSE')
