@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+: 'psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     \c ns_akari
     CREATE OR REPLACE FUNCTION create_new_sse_event_trigger() 
     RETURNS event_trigger 
@@ -27,4 +27,4 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         ON ddl_command_end
         WHEN TAG IN ('CREATE TABLE')
         EXECUTE FUNCTION create_new_sse_event_trigger();
-EOSQL
+EOSQL'

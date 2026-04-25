@@ -2,6 +2,9 @@
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     \c ns_assembly
 
+    CREATE SCHEMA assembly;
+    SET search_path = assembly;
+
     CREATE TABLE IF NOT EXISTS NSQueue (
     ID TEXT PRIMARY KEY,
     Council SMALLINT CHECK (Council = 1 OR Council = 2),
@@ -34,6 +37,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     CREATE INDEX IF NOT EXISTS NSQueue_ID_index ON NSQueue (ID); -- create relevant indexes on frequently-queried tables
     CREATE INDEX IF NOT EXISTS IFVQueue_Author_index on IFVQueue (IFVAuthor);
 
-    GRANT USAGE ON SCHEMA public TO ns_assembly_app;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ns_assembly_app;
+    ALTER ROLE ns_assembly_app IN DATABASE ns_assembly SET search_path = assembly;
+    GRANT USAGE ON SCHEMA assembly TO ns_assembly_app;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA assembly TO ns_assembly_app;
 EOSQL

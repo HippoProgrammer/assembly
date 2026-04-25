@@ -2,10 +2,15 @@ import asyncio # async functionality
 import psycopg # postgres connector
 import psycopg_pool
 import classes
-import logging
-
+import logging, sys
 # set up a logger
 logger = logging.getLogger(__name__) # get the logger for this script
+# deprecated; will be handled by __main__ at a later date
+handler = logging.StreamHandler(stream=sys.stdout) # set logs to be sent to stdout
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler) # attach the handler to the logger
+logger.setLevel(logging.DEBUG) # set the logs to output at debug verbosity
 
 class Database:
     def __init__(self,connection_uri:str) -> None:
@@ -15,14 +20,48 @@ class Database:
 
         self.connection_pool = psycopg_pool.AsyncConnectionPool(conninfo = connection_uri, min_size = 2, max_size = 16, open = False) # create a pool of connections for use later
         logger.info('ConnectionPool created')
-    async def setup_all(self) -> None:
-        """Configure a Database and make it ready to accept connections"""
+    async def _open_connection_pool(self) -> None:
         await self.connection_pool.open() # open the connection pool so connections can actually be made
         logger.info('ConnectionPool opened')
-    async def cleanup(self):
+    async def _close_connection_pool(self) -> None:
         await self.connection_pool.close()
+        logger.info('ConnectionPool closed')
 
 class NSAkariDatabase(Database):
+    async def setup_all(self) -> None:
+        """Configure a Database and make it ready to accept connections"""
+        await self._open_connection_pool()
+        try:
+            async with self.connection_pool.connection() as conn:
+                await conn.set_autocommit(True)
+                logger.debug('DB connection opened from pool')
+                async with conn.cursor() as cur: # open a cursor
+                    logger.debug('Cursor opened')
+
+                    await cur.execute("""
+                    CREATE OR REPLACE FUNCTION notify_new_sse_event_on_insert() 
+                    RETURNS TRIGGER 
+                    AS $trigger$
+                        BEGIN
+                            PERFORM pg_notify('new_sse_event', NEW.event::text);
+                            RETURN NULL;
+                        END;
+                    $trigger$ LANGUAGE plpgsql;
+                    """)
+
+                    await cur.execute("""
+                    CREATE TRIGGER new_sse_event_on_insert
+                        AFTER INSERT ON akari_events
+                        FOR EACH ROW EXECUTE FUNCTION notify_new_sse_event_on_insert();
+                    """)
+
+                    logger.info('Successful query')
+        except psycopg_pool.PoolTimeout:
+            self.connection_self.connection_pool.check()
+        except Exception as e:
+            logger.error(e)
+    async def cleanup(self) -> None:
+        await self._close_connection_pool()
     async def listen_for_new_sse_events(self,callback) -> None:
         """Add a listener that calls callback on all new SSE events"""
         try:
@@ -37,7 +76,7 @@ class NSAkariDatabase(Database):
                     """)
                 notifs = conn.notifies()
                 async for notif in notifs:
-                    callback(notif.payload)
+                    await callback(notif.payload)
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
         except asyncio.CancelledError:
@@ -62,6 +101,11 @@ class NSAkariDatabase(Database):
             self.connection_self.connection_pool.check()
 
 class NSAssemblyDatabase(Database):
+    async def setup_all(self) -> None:
+        """Configure a Database and make it ready to accept connections"""
+        await self._open_connection_pool()
+    async def cleanup(self) -> None:
+        await self._close_connection_pool()
     # NSQueue table
     async def nsqueue_add(self,proposal:classes.wa.Proposal) -> None:
         """Add a Proposal to the NSQueue"""

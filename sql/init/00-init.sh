@@ -13,4 +13,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     CREATE DATABASE ns_akari;
     GRANT CONNECT ON DATABASE ns_akari TO ns_assembly_app;
     GRANT ALL ON DATABASE ns_akari TO ns_akari;
+
+    GRANT USAGE ON LANGUAGE plpgsql TO ns_assembly_app;
+    GRANT USAGE ON LANGUAGE plpgsql TO ns_akari;
 EOSQL

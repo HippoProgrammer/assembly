@@ -29,7 +29,7 @@ ns_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_ass
 akari_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_akari"
 logger.debug('Connection URIs created')
 ns_postgres = io.db.NSAssemblyDatabase(ns_conn_uri) # create a DB instance
-ns_akari = io.db.NSAkariDatabase(ns_conn_uri)
+ns_akari = io.db.NSAkariDatabase(akari_conn_uri)
 logger.debug('Database objects created')
 
 # create the Bot object
