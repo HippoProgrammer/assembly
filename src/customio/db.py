@@ -58,8 +58,6 @@ class NSAkariDatabase(Database):
                     logger.info('Successful query')
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-        except Exception as e:
-            logger.error(e)
     async def cleanup(self) -> None:
         await self._close_connection_pool()
     async def listen_for_new_sse_events(self,callback) -> None:
