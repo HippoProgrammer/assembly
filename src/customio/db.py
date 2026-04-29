@@ -43,7 +43,7 @@ class NSAkariDatabase(Database):
                     """)
 
                     await cur.execute("""
-                    CREATE TRIGGER new_sse_event_on_insert
+                    CREATE OR REPLACE TRIGGER new_sse_event_on_insert
                         AFTER INSERT ON akari_events
                         FOR EACH ROW EXECUTE FUNCTION notify_new_sse_event_on_insert();
                     """)
