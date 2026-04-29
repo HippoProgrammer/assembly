@@ -2,7 +2,7 @@ import os
 import logging
 
 # set up a logger
-logger = logging.getLogger(__name__) # get the logger for this script
+logger = logging.getLogger('assembly.customio.env') # get the logger for this script
 
 def load_secrets_from_envvars():
     # load envvars 

@@ -6,7 +6,7 @@ from .env import load_useragent_from_envvars
 import logging
 
 # set up a logger
-logger = logging.getLogger(__name__) # get the logger for this script
+logger = logging.getLogger('assembly.customio.ns') # get the logger for this script
 
 headers = {
     "User-Agent": f"assembly/0.1.0-a1, source https://github.com/HippoProgrammer/assembly, author idinist_imauggland, used_by {load_useragent_from_envvars()}"
