@@ -12,7 +12,7 @@ import traceback
 import datetime
 
 # set up a logger
-logger = logging.getLogger(__name__) # get the logger for this script
+logger = logging.getLogger('assembly') # get the logger for this script
 handler = logging.StreamHandler(stream=sys.stdout) # set logs to be sent to stdout
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)

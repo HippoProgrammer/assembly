@@ -3,29 +3,22 @@ import psycopg # postgres connector
 import psycopg_pool
 import classes
 import logging, sys
-# set up a logger
-logger = logging.getLogger(__name__) # get the logger for this script
-# deprecated; will be handled by __main__ at a later date
-handler = logging.StreamHandler(stream=sys.stdout) # set logs to be sent to stdout
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler) # attach the handler to the logger
-logger.setLevel(logging.DEBUG) # set the logs to output at debug verbosity
 
 class Database:
     def __init__(self,connection_uri:str) -> None:
         """Create a new unconfigured Database object"""
+        self.logger = logging.getLogger('assembly.customio.db.Database')
         self.connection_uri = connection_uri # save the connection URI
-        logger.debug('Connection URI received')
+        self.logger.debug('Connection URI received')
 
         self.connection_pool = psycopg_pool.AsyncConnectionPool(conninfo = connection_uri, min_size = 2, max_size = 16, open = False) # create a pool of connections for use later
-        logger.info('ConnectionPool created')
+        self.logger.info('ConnectionPool created')
     async def _open_connection_pool(self) -> None:
         await self.connection_pool.open() # open the connection pool so connections can actually be made
-        logger.info('ConnectionPool opened')
+        self.logger.info('ConnectionPool opened')
     async def _close_connection_pool(self) -> None:
         await self.connection_pool.close()
-        logger.info('ConnectionPool closed')
+        self.logger.info('ConnectionPool closed')
 
 class NSAkariDatabase(Database):
     async def setup_all(self) -> None:
@@ -34,9 +27,9 @@ class NSAkariDatabase(Database):
         try:
             async with self.connection_pool.connection() as conn:
                 await conn.set_autocommit(True)
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     CREATE OR REPLACE FUNCTION notify_new_sse_event_on_insert() 
@@ -55,7 +48,7 @@ class NSAkariDatabase(Database):
                         FOR EACH ROW EXECUTE FUNCTION notify_new_sse_event_on_insert();
                     """)
 
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def cleanup(self) -> None:
@@ -65,9 +58,9 @@ class NSAkariDatabase(Database):
         try:
             async with self.connection_pool.connection() as conn:
                 await conn.set_autocommit(True)
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     LISTEN new_sse_event;
@@ -78,19 +71,19 @@ class NSAkariDatabase(Database):
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
         except asyncio.CancelledError:
-            logger.debug('Listener cancelled')
+            self.logger.debug('Listener cancelled')
     async def get_by_event(self, event:int):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT * FROM akari_events
                     WHERE event = %s;
                     """, [event]) # select all proposals with the supplied ID
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     SQLproposal = await cur.fetchone() # fetch the event (as ID is unique there is only one)
                     event = classes.sse.Event().fromSQLValues(SQLproposal) # convert it into an Event object
@@ -109,16 +102,16 @@ class NSAssemblyDatabase(Database):
         """Add a Proposal to the NSQueue"""
         try: # protect against PoolTimeouts
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal, Quorum)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (ID) DO NOTHING;
                     """,proposal.toSQLValues()) # insert data into the table, but if it already exists ignore it
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
@@ -127,15 +120,15 @@ class NSAssemblyDatabase(Database):
         """Get a proposal by ID from the NSQueue"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT * FROM NSQueue
                     WHERE ID = %s;
                     """, [id]) # select all proposals with the supplied ID
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     SQLproposal = await cur.fetchone() # fetch the proposal (as ID is unique there is only one)
                     proposal = classes.wa.Proposal().fromSQLValues(SQLproposal) # convert it into a Proposal object
@@ -146,16 +139,16 @@ class NSAssemblyDatabase(Database):
         """Get all proposals that are legal from the NSQueue, up to the specified limit"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT * FROM NSQueue 
                     WHERE Legal AND Council = %s 
                     LIMIT %s;
                     """, [council, limit]) # select all legal proposals, up to the queue limit of seven
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     SQLqueue = await cur.fetchall() # fetch them all
                     queue = [] 
@@ -170,16 +163,16 @@ class NSAssemblyDatabase(Database):
         """Add an IFV to the IFVQueue"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     INSERT INTO IFVQueue (ID, Name, Thread, IFVAuthor, IFVLink)
                     VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (ID) DO NOTHING;
                     """, ifv.toSQLValues()) # insert data from IFV object
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     await conn.commit() # save to DB
         except psycopg_pool.PoolTimeout:
@@ -188,9 +181,9 @@ class NSAssemblyDatabase(Database):
         """Check if an IFV exists in the IFVQueue with the specified ID"""
         try:
             async with self.connection_pool.connection() as conn:
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur:
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT 1 FROM IFVQueue
@@ -209,15 +202,15 @@ class NSAssemblyDatabase(Database):
         """Get an IFV from the IFVQueue with the specified ID"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT * FROM IFVQueue
                     WHERE ID = %s;
                     """, [id]) # select all IFVs with the supplied ID
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     SQLifv = await cur.fetchone() # fetch the IFV
                     ifv = classes.ifv.IFV().fromSQLValues(SQLifv) # convert to an IFV object
@@ -228,15 +221,15 @@ class NSAssemblyDatabase(Database):
         """Get all IFVs from the IFVQueue with the specified author"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT * FROM IFVQueue
                     WHERE IFVAuthor = %s;
                     """, [author]) # select all IFVs with the supplied author
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     SQLifvs = await cur.fetchall() # fetch them all
                     ifvs = []
@@ -249,16 +242,16 @@ class NSAssemblyDatabase(Database):
         """Get all IFVs from the IFVQueue with no author"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     SELECT * FROM IFVQueue
                     WHERE IFVAuthor IS NULL
                     LIMIT %s;
                     """,[limit]) # select all IFVs with no author up to the limit
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     SQLifvs = await cur.fetchall() # fetch them all
                     ifvs = []
@@ -271,16 +264,16 @@ class NSAssemblyDatabase(Database):
         """Change the IFVAuthor field on an IFV record with a specified ID"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
 
                     await cur.execute("""
                     UPDATE IFVQueue
                     SET IFVAuthor = %s
                     WHERE ID = %s;
                     """, [author, id]) # update relevant records in the IFVQueue
-                    logger.info('Successful query')
+                    self.logger.info('Successful query')
 
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
@@ -288,9 +281,9 @@ class NSAssemblyDatabase(Database):
     async def ifvqueue_update_link_by_id(self, id:str, link:str) -> None:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
                     await cur.execute("""
                     UPDATE IFVQueue
                     SET IFVLink = %s
@@ -302,9 +295,9 @@ class NSAssemblyDatabase(Database):
     async def ifvqueue_remove_author_link(self, id:str):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
                     await cur.execute("""
                     UPDATE IFVQueue
                     SET IFVAuthor = NULL,
@@ -317,9 +310,9 @@ class NSAssemblyDatabase(Database):
     async def botperms_add(self, permission:classes.auth.Permission):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
                     await cur.execute("""
                     INSERT INTO BotPerms (Kind, Identifier)
                     VALUES (%s, %s)
@@ -331,9 +324,9 @@ class NSAssemblyDatabase(Database):
     async def botperms_get_by_kind(self, kind:str):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
                     await cur.execute("""
                     SELECT Identifier FROM BotPerms
                     WHERE Kind = %s;
@@ -349,9 +342,9 @@ class NSAssemblyDatabase(Database):
     async def channelref_add(self, channel:classes.auth.Channel):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
                     await cur.execute("""
                     INSERT INTO ChannelReference (Kind, Identifier)
                     VALUES (%s, %s)
@@ -363,9 +356,9 @@ class NSAssemblyDatabase(Database):
     async def channelref_get_by_kind(self, kind:str):
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
-                logger.debug('DB connection opened from pool')
+                self.logger.debug('DB connection opened from pool')
                 async with conn.cursor() as cur: # open a cursor
-                    logger.debug('Cursor opened')
+                    self.logger.debug('Cursor opened')
                     await cur.execute("""
                     SELECT Identifier FROM ChannelReference
                     WHERE Kind = %s;
