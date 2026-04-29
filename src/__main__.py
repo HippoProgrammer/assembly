@@ -165,7 +165,7 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
 
     exists = await ns_postgres.ifvqueue_check_exists_by_id(id)
     if not exists: # if it doesn't exist already - note this check will erroneously succeed if the DB addition fails but thread creation succeeds
-        channel = bot.get_channel(await ns_postgres.channelref_get_by_kind('thread')) # get channel from ID stored in DB
+        channel = bot.get_channel((await ns_postgres.channelref_get_by_kind('thread')).identifier) # get channel from ID stored in DB
         logger.debug('Thread channel object found')
 
         author = proposal.author.replace('_',' ').title() # replace underscores with spaces and capitalize author name
@@ -223,7 +223,7 @@ async def _new_sse_event(payload:str):
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
 
-    authorised_role_id = await ns_postgres.botperms_get_by_kind(check_kind) # fetch the id of the actual authorised role from the DB
+    authorised_role_id = await ns_postgres.botperms_get_by_kind(check_kind).identifier # fetch the id of the actual authorised role from the DB
     logger.debug('Authorised role ID fetched from DB')
 
     if authorised_role_id: # if it exists
@@ -327,7 +327,7 @@ async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_use
         logger.info('Queue embed fetched')
 
         if ping_users:
-            ping = await ns_postgres.botperms_get_by_kind('user')
+            ping = await ns_postgres.botperms_get_by_kind('user').identifier
             logger.debug('Ping role id found')
 
             await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView(council = council))

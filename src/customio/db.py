@@ -328,15 +328,12 @@ class NSAssemblyDatabase(Database):
                 async with conn.cursor() as cur: # open a cursor
                     self.logger.debug('Cursor opened')
                     await cur.execute("""
-                    SELECT Identifier FROM BotPerms
+                    SELECT * FROM BotPerms
                     WHERE Kind = %s;
                     """, [kind])
                     permission = await cur.fetchone() # note this method only allows for one permission of each type to be stored
-                    if permission != None:
-                        permission = int(permission[0])
-                    else:
-                        permission = 0
-                    return permission
+                    permission_object = classes.auth.Permission().fromSQLValues(permission)
+                    return permission_object
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     async def channelref_add(self, channel:classes.auth.Channel):
@@ -360,14 +357,11 @@ class NSAssemblyDatabase(Database):
                 async with conn.cursor() as cur: # open a cursor
                     self.logger.debug('Cursor opened')
                     await cur.execute("""
-                    SELECT Identifier FROM ChannelReference
+                    SELECT * FROM ChannelReference
                     WHERE Kind = %s;
                     """, [kind])
                     channel = await cur.fetchone() # note this method only allows for one permission of each type to be stored
-                    if channel != None:
-                        channel = int(channel[0])
-                    else:
-                        channel = 0
-                    return channel
+                    channel_object = classes.auth.Channel().fromSQLValues(channel)
+                    return channel_object
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
