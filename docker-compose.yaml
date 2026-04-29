@@ -14,8 +14,13 @@ services: # define services
       - app-db-password
     environment: # pass location of secrets to the container
       ASSEMBLY_TOKEN_FILE: /run/secrets/bot-token
-      POSTGRES_PASSWORD_FILE: /run/secrets/app-db-password
       NS_USER_AGENT: idinist_imauggland
+      POSTGRES_PASSWORD_FILE: /run/secrets/app-db-password
+      POSTGRES_USER: ns_assembly_app
+      POSTGRES_HOST: ns_assembly_db
+      POSTGRES_PORT: 5432
+      POSTGRES_ASSEMBLY_DB: ns_assembly
+      POSTGRES_AKARI_DB: ns_akari
     networks: # allow the two containers to communicate
       - app-local
 

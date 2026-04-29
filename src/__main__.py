@@ -22,11 +22,12 @@ logger.info('Logging started')
 
 # read envvars
 token, pgpass = io.env.load_secrets_from_envvars() # load environment variables (bot token, postgres db password)
+pguser, pghost, pgport, pgassembly, pgakari = io.env.load_database_config_from_envvars()
 logger.info('Environment variables loaded')
 
 # set up the databases
-ns_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_assembly" # deprecated - will be switched to env vars. create a standard postgres connection URI by inserting the loaded password
-akari_conn_uri = f"postgresql://ns_assembly_app:{pgpass}@ns_assembly_db:5432/ns_akari"
+ns_conn_uri = f"postgresql://{pguser}:{pgpass}@{pghost}:{pgport}/{pgassembly}" # create a standard postgres connection URI by inserting the loaded password
+akari_conn_uri = f"postgresql://{pguser}:{pgpass}@{pghost}:{pgport}/{pgakari}"
 logger.debug('Connection URIs created')
 ns_postgres = io.db.NSAssemblyDatabase(ns_conn_uri) # create a DB instance
 ns_akari = io.db.NSAkariDatabase(akari_conn_uri)

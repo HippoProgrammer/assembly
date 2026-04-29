@@ -28,6 +28,14 @@ def load_secrets_from_envvars():
         pgpass = file.read()
     return token, pgpass
 
+def load_database_config_from_envvars():
+    user = str(os.getenv("POSTGRES_USER"))
+    host = str(os.getenv("POSTGRES_HOST"))
+    port = str(os.getenv("POSTGRES_PORT"))
+    assembly_db = str(os.getenv("POSTGRES_ASSEMBLY_DB"))
+    akari_db = str(os.getenv("POSTGRES_AKARI_DB"))
+    return user, host, port, assembly_db, akari_db
+
 def load_useragent_from_envvars():
     useragent_nation = str(os.getenv("NS_USER_AGENT"))
     return useragent_nation
