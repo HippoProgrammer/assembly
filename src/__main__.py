@@ -305,7 +305,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
         
         logger.debug('Proposal information formatted')
 
-        table += f"{emoji} | {name} | {status} | {ifv_author} | {ifv_link} \n" # add all this data to the table
+        table += f"{emoji} | {name} | {status} | {proposal_link} | {ifv_author} | {ifv_link} \n" # add all this data to the table
         logger.debug('Proposal information added to table')
     
     if council == 1:
