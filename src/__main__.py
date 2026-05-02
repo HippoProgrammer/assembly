@@ -185,7 +185,7 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
         thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
         logger.info('Thread created')
 
-        message = await thread.fetch_message(ifv.thread)
+        message = await thread.fetch_message(thread.id)
         logger.debug('Message object found')
 
         await message.add_reaction('🟢') # add required reactions
