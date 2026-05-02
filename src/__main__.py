@@ -185,7 +185,6 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
         thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
         logger.info('Thread created')
 
-        thread = bot.get_channel(ifv.thread)
         message = await thread.fetch_message(ifv.thread)
         logger.debug('Message object found')
 
@@ -250,7 +249,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
     queue = await ns_postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
     logger.debug('Proposals fetched from DB')
 
-    table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
+    table = 'Stance | Name | Status | Proposal Link | IFV Author | IFV Link\n' # create a table, starting with the header
     logger.debug('Table header created')
 
     for proposal in queue: # for each fetched proposal
@@ -266,15 +265,17 @@ async def _get_queue_embed(council:int) -> discord.Embed:
         else: # otherwise
             status = 'Quorum' # it is merely at quorum
 
+        proposal_link = f'[Link](https://www.nationstates.net/page=UN_view_proposal/id={proposal.id})'
+
         if ifv.ifvauthor == None: # if no IFV author is listed
-            author = 'N/A' # represent this in a human-readable format
+            ifv_author = 'N/A' # represent this in a human-readable format
         else: # if one is listed
-            author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
+            ifv_author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
 
         if ifv.ifvlink == None: # if no IFV link is listed
-            link = 'N/A' # represent this in a human-readable format
+            ifv_link = 'N/A' # represent this in a human-readable format
         else: # if one is listed
-            link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
+            ifv_link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
         
         thread = bot.get_channel(ifv.thread)
         message = await thread.fetch_message(ifv.thread)
@@ -304,7 +305,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
         
         logger.debug('Proposal information formatted')
 
-        table += f"{emoji} | {name} | {status} | {author} | {link} \n" # add all this data to the table
+        table += f"{emoji} | {name} | {status} | {ifv_author} | {ifv_link} \n" # add all this data to the table
         logger.debug('Proposal information added to table')
     
     if council == 1:
