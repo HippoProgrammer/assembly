@@ -1,6 +1,6 @@
 import aiohttp # HTTP requests
 import asyncio # async functionality
-from lxml import etree # XML parsing
+import xml.etree.ElementTree as etree # XML parsing
 import classes
 from .env import load_useragent_from_envvars
 import logging
@@ -18,7 +18,7 @@ async def _query_proposals(council: int):
         async with session.get(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=proposals') as response:
             xmlstr = await response.text()
             xmltree = etree.fromstring(xmlstr)
-            proposals = xmltree.xpath('/WA/PROPOSALS/PROPOSAL')
+            proposals = xmltree.findall('/WA/PROPOSALS/PROPOSAL')
             return proposals
 
 async def _parse_coauthor(coauthor:etree._Element):
@@ -31,8 +31,8 @@ async def _get_quorum():
     async with aiohttp.ClientSession() as session:
         async with session.get('http://www.nationstates.net/cgi-bin/api.cgi?wa=1&q=numdelegates') as response:
             xmlstr = await response.text()
-            xmltree = etree.fromstring(xmlstr)
-            numdelegates = int(xmltree.xpath('/WA/NUMDELEGATES')[0].text)
+            xmltree = etree.findall(xmlstr)
+            numdelegates = int(xmltree.findall('/WA/NUMDELEGATES')[0].text)
             quorum = round(numdelegates * 0.06, 1)
             return quorum
 
@@ -47,14 +47,14 @@ async def parse_proposals(council: int):
     parsed_xml = []
     for element in xml:
         parsed_element = classes.wa.Proposal().fromAttributeValues(
-            id = element.xpath('./ID')[0].text,
+            id = element.findall('./ID')[0].text,
             council = council,
-            name = element.xpath('./NAME')[0].text,
-            category = element.xpath('./CATEGORY')[0].text,
-            author = element.xpath('./PROPOSED_BY')[0].text,
-            coauthors = await _parse_coauthor(element.xpath('./COAUTHOR')),
-            legal = (len(element.xpath('./GENSEC/LEGAL/*')) > (len(element.xpath('./GENSEC/ILLEGAL/*')) + len(element.xpath('./GENSEC/DISCARD/*')))),
-            quorum = len(await _parse_approvals(element.xpath('./APPROVALS'))) > await _get_quorum()
+            name = element.findall('./NAME')[0].text,
+            category = element.findall('./CATEGORY')[0].text,
+            author = element.findall('./PROPOSED_BY')[0].text,
+            coauthors = await _parse_coauthor(element.findall('./COAUTHOR')),
+            legal = (len(element.findall('./GENSEC/LEGAL/*')) > (len(element.findall('./GENSEC/ILLEGAL/*')) + len(element.findall('./GENSEC/DISCARD/*')))),
+            quorum = len(await _parse_approvals(element.findall('./APPROVALS'))) > await _get_quorum()
         )
         parsed_xml.append(parsed_element)
     return parsed_xml
