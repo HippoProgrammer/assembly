@@ -58,3 +58,15 @@ async def parse_proposals(council: int):
         )
         parsed_xml.append(parsed_element)
     return parsed_xml
+
+async def _query_atvote(council:int):
+    council = str(council) # convert to string for URL
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=resolution') as response:
+            xmlstr = await response.text()
+            xmltree = etree.fromstring(xmlstr)
+            resolutions = xmltree.findall('/WA/RESOLUTION')
+            if len(resolutions) == 0:
+                return None
+            else:
+                return resolutions
