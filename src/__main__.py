@@ -10,6 +10,7 @@ import customio as io # db, env, ns
 import classes # auth, wa
 import traceback
 import datetime
+import re
 
 # set up a logger
 logger = logging.getLogger('assembly') # get the logger for this script
@@ -90,18 +91,22 @@ class IFVSelectionModal(discord.ui.DesignerModal):
         failure_invalid_options = discord.Embed(description = "IFV was not selected.").set_footer(text = 'You have no valid IFVs for the selected action!')
         logger.debug('Embed objects formatted and created')
 
+        id = self.get_item('select').values[0]
+
         if not self.valid: # if invalid
             await interaction.respond(embed = failure_invalid_options, ephemeral = True) # send an embed informing the user that they selected an invalid option
             logger.debug('Modal invalid, sent error message')
         elif self.action == 'accept': # if valid and accept is the action
-            await ns_postgres.ifvqueue_update_author_by_id(id = self.get_item('select').values[0], author = self.user_id) # mark the IFV as accepted in the DB
+            await ns_postgres.ifvqueue_update_author_by_id(id = id, author = self.user_id) # mark the IFV as accepted in the DB
             logger.debug('IFVQueue updated with author')
 
             await interaction.respond(embed = success, ephemeral = True) # send a success message
             logger.debug('Sent success message')
         elif self.action == 'submit': # if valid and submit is the action
-            if 'nationstates.net' not in self.get_item('link').value: # and the link does not contain invalid websites
-                await ns_postgres.ifvqueue_update_link_by_id(id = self.get_item('select').values[0], link = self.get_item('link').value) # save the link to the IFV on the DB
+            link = self.get_item('link').value
+            if not re.search(r"nationstates\.net", link): # and the link does not contain invalid websites - deprecated, replace with regex
+                link = re.sub(r"/.(?<!=| |\.|:|\/|\w)/gm", '', link)
+                await ns_postgres.ifvqueue_update_link_by_id(id = id, link = link) # save the link to the IFV on the DB
                 logger.debug('IFVQueue updated with link')
 
                 await interaction.respond(embed = success, ephemeral = True) # send a success message
@@ -110,7 +115,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
                 await interaction.respond(embed = failure_invalid_link, ephemeral = True) # send an embed informing the user that their link was invalid
                 logger.debug('Link invalid, sent error message')
         elif self.action == 'remove': # if valid and remove is the action
-            await ns_postgres.ifvqueue_remove_author_link(id = self.get_item('select').values[0]) # remove the accepted mark and the link from the DB
+            await ns_postgres.ifvqueue_remove_author_link(id = id) # remove the accepted mark and the link from the DB
             logger.debug('IFVQueue updated with removed data')
 
             await interaction.respond(embed = success, ephemeral = True) # send a success message
