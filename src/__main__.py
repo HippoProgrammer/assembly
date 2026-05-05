@@ -1,4 +1,21 @@
 #!/bin/python
+
+'''assembly v0.1.0a1
+Copyright (C) 2026 HippoProgrammer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
+
 # import required libraries
 import discord # py-cord: discord bot framework
 from discord.ext import commands
@@ -190,11 +207,12 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
         thread = await channel.create_thread(name=name, embed=embed, reason='Created WA proposal thread. Automatic action by Assembly bot.') # Create a thread using the embed earlier
         logger.info('Thread created')
 
-        message = thread.starting_message # get the message just sent
+        message = await thread.fetch_message(thread.id)
         logger.debug('Message object found')
 
         await message.add_reaction('🟢') # add required reactions
         await message.add_reaction('🔴')
+        await message.add_reaction('⚪')
         logger.info('Reactions added')
 
         await ns_postgres.ifvqueue_add(classes.ifv.IFV().fromAttributeValues(id=id,name=name,thread=thread.id)) # add information and thread ID to IFVQueue
@@ -228,7 +246,8 @@ async def _new_sse_event(payload:str):
 async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
     """Check if the permissions of a supplied user match those stored in the database."""
 
-    authorised_role_id = await ns_postgres.botperms_get_by_kind(check_kind).identifier # fetch the id of the actual authorised role from the DB
+    authorised_role_object = await ns_postgres.botperms_get_by_kind(check_kind) 
+    authorised_role_id = authorised_role_object.identifier # fetch the id of the actual authorised role from the DB
     logger.debug('Authorised role ID fetched from DB')
 
     if authorised_role_id: # if it exists
@@ -252,7 +271,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
     queue = await ns_postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
     logger.debug('Proposals fetched from DB')
 
-    table = 'Stance | Name | Status | IFV Author | IFV Link\n' # create a table, starting with the header
+    table = 'Stance | Name | Status | Proposal Link | IFV Author | IFV Link\n' # create a table, starting with the header
     logger.debug('Table header created')
 
     for proposal in queue: # for each fetched proposal
@@ -268,32 +287,47 @@ async def _get_queue_embed(council:int) -> discord.Embed:
         else: # otherwise
             status = 'Quorum' # it is merely at quorum
 
+        proposal_link = f'[Link](https://www.nationstates.net/page=UN_view_proposal/id={proposal.id})'
+
         if ifv.ifvauthor == None: # if no IFV author is listed
-            author = 'N/A' # represent this in a human-readable format
+            ifv_author = 'N/A' # represent this in a human-readable format
         else: # if one is listed
-            author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
+            ifv_author = f'<@{ifv.ifvauthor}>' # tag their Discord user id
 
         if ifv.ifvlink == None: # if no IFV link is listed
-            link = 'N/A' # represent this in a human-readable format
+            ifv_link = 'N/A' # represent this in a human-readable format
         else: # if one is listed
-            link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
+            ifv_link = f'[Link]({ifv.ifvlink})' # link this in Markdown syntax
         
-        reactions = bot.get_channel(ifv.thread).starting_message.reactions
+        thread = bot.get_channel(ifv.thread)
+        message = await thread.fetch_message(ifv.thread)
+        raw_reactions = message.reactions
 
-        logger.debug(reactions)
-        logger.debug(ifv.toSQLValues())
+        logger.debug(raw_reactions)
 
-        #green = [react for react in reactions if react.emoji == '🟢'][0].count
-        #red = [react for react in reactions if react.emoji == '🔴'][0].count
+        reactions = dict()
 
-        if len(reactions) == 2: # this is potentially temporary? odd return values for reactions
+        reactions['green'] = [react for react in raw_reactions if react.emoji == '🟢'][0].count
+        reactions['red'] = [react for react in raw_reactions if react.emoji == '🔴'][0].count
+        reactions['white'] = [react for react in raw_reactions if react.emoji == '⚪'][0].count
+
+        if len(set(reactions.values())) == 1: # if the set of values has length 1, i.e. all are equal
+            emoji = '🟢/🔴' # probably no-one has voted, but if so, there isn't a huge proportion of abstain, so we'll put out an IFV
+        elif reactions['white'] > reactions['green'] and reactions['white'] > reactions['red']: # if abstain is highest
+            emoji = '⚪'
+        elif reactions['red'] > reactions['green']: # if red is highest or tied with abstain
+            emoji = '🔴'
+        else:
+            emoji = '🟢'
+
+        '''if len(reactions) == 2: # this was needed once... but then a bug magically resolved itself. leaving here just in case.
             emoji = '🟢/🔴'
         else:
-            emoji = reactions[0].emoji
+            emoji = reactions[0].emoji'''
         
         logger.debug('Proposal information formatted')
 
-        table += f"{emoji} | {name} | {status} | {author} | {link} \n" # add all this data to the table
+        table += f"{emoji} | {name} | {status} | {proposal_link} | {ifv_author} | {ifv_link} \n" # add all this data to the table
         logger.debug('Proposal information added to table')
     
     if council == 1:
