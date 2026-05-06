@@ -27,7 +27,6 @@ import customio as io # db, env, ns
 import classes # auth, wa
 import traceback
 import datetime
-import re
 
 # set up a logger
 logger = logging.getLogger('assembly') # get the logger for this script
@@ -122,7 +121,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
         elif self.action == 'submit': # if valid and submit is the action
             link = self.get_item('link').value
             if not re.search(r"nationstates\.net", link): # and the link does not contain invalid websites - deprecated, replace with regex
-                link = re.sub(r"/.(?<!=| |\.|:|\/|\w)/gm", '', link)
+                #link = re.sub(r"/.(?<!=| |\.|:|\/|\w)/gm", '', link)
                 await ns_postgres.ifvqueue_update_link_by_id(id = id, link = link) # save the link to the IFV on the DB
                 logger.debug('IFVQueue updated with link')
 
