@@ -9,3 +9,4 @@ This bot does *not* support multiple servers using the same instance! You **must
 ## Wiki
 * [Installation](https://github.com/HippoProgrammer/assembly/wiki/Installation)
 * [Command Reference](https://github.com/HippoProgrammer/assembly/wiki/Command-Reference)
+* [Roadmap](https://github.com/HippoProgrammer/assembly/wiki/Roadmap)
