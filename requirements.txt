@@ -1,4 +1,4 @@
 py-cord==2.7.2 # Discord API wrapper
-psycopg[binary] # Postgres connector
-psycopg_pool # Postgres connection pool
-aiohttp # Async HTTP requests
+psycopg[binary,pool]==3.3.4 # Postgres connector
+aiohttp==3.13.5 # Async HTTP requests
+validators==0.35.0 # String sanitization and validation

@@ -18,15 +18,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 
 # import required libraries
 import discord # py-cord: discord bot framework
-from discord.ext import commands
 import logging # log handler
 import asyncio # async functionality
-import psycopg # postgres connector
 import sys # stdout
 import customio as io # db, env, ns 
 import classes # auth, wa
-import traceback
 import datetime
+from validators.url import url as is_url
+import re
 
 # set up a logger
 logger = logging.getLogger('assembly') # get the logger for this script
@@ -101,9 +100,9 @@ class IFVSelectionModal(discord.ui.DesignerModal):
 
     async def callback(self, interaction):
         """Callback for an IFVSelectionModal."""
-
         success = discord.Embed(description = "IFV modified successfully!").set_footer(text = 'The queue embed may take 1-5 seconds to refresh.')
-        failure_invalid_link = discord.Embed(description = "IFV was not modified.").set_footer(text = 'Please provide a link that is not a NationStates dispatch.')
+        failure_invalid_url = discord.Embed(description = "IFV was not modified.").set_footer(text = 'Please provide a link that is a valid URL.')
+        failure_invalid_site = discord.Embed(description = "IFV was not modified.").set_footer(text = 'Please provide a link that is not a NationStates dispatch.')
         failure_invalid_options = discord.Embed(description = "IFV was not selected.").set_footer(text = 'You have no valid IFVs for the selected action!')
         logger.debug('Embed objects formatted and created')
 
@@ -120,16 +119,17 @@ class IFVSelectionModal(discord.ui.DesignerModal):
             logger.debug('Sent success message')
         elif self.action == 'submit': # if valid and submit is the action
             link = self.get_item('link').value
-            if not re.search(r"nationstates\.net", link): # and the link does not contain invalid websites - deprecated, replace with regex
-                #link = re.sub(r"/.(?<!=| |\.|:|\/|\w)/gm", '', link)
+            if not is_url(link, public = True): # if the link is a valid URL
+                await interaction.respond(embed = failure_invalid_url, ephemeral = True) # send an embed informing the user that their link was invalid
+            elif re.search(r"nationstates\.net", link): # and the link does not contain invalid websites
+                await interaction.respond(embed = failure_invalid_site, ephemeral = True) # send an embed informing the user that their link was invalid
+                logger.debug('Link invalid, sent error message')
+            else: # if link is valid
                 await ns_postgres.ifvqueue_update_link_by_id(id = id, link = link) # save the link to the IFV on the DB
                 logger.debug('IFVQueue updated with link')
 
                 await interaction.respond(embed = success, ephemeral = True) # send a success message
                 logger.debug('Sent success message')
-            else: # if link is invalid
-                await interaction.respond(embed = failure_invalid_link, ephemeral = True) # send an embed informing the user that their link was invalid
-                logger.debug('Link invalid, sent error message')
         elif self.action == 'remove': # if valid and remove is the action
             await ns_postgres.ifvqueue_remove_author_link(id = id) # remove the accepted mark and the link from the DB
             logger.debug('IFVQueue updated with removed data')
