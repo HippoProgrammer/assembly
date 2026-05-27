@@ -387,6 +387,8 @@ async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_use
 # log when the bot starts up and has configured the database successfully
 @bot.event
 async def on_ready() -> None:
+    activity = discord.Game("Join the WAA Ministry today!")
+    await bot.change_presence(activity=activity)
     logger.info('Bot started, ready for interaction')
 
 # create info slash command
