@@ -24,65 +24,98 @@ import logging
 # set up a logger
 logger = logging.getLogger('assembly.customio.ns') # get the logger for this script
 
-headers = {
-    "User-Agent": f"assembly/0.1.0-a1, source https://github.com/HippoProgrammer/assembly, author idinist_imauggland, used_by {load_useragent_from_envvars()}"
-}
+class HTTPResponseException(Exception):
+    pass
 
-async def _query_proposals(council: int):
-    council = str(council) # convert to string for URL
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=proposals') as response:
-            xmlstr = await response.text()
+class QueryException(Exception):
+    pass
+class API:
+    def __init__(self):
+        self.rate_limited = False
+        self.headers = {
+            "User-Agent": f"assembly/0.1.0-a1, source https://github.com/HippoProgrammer/assembly, author idinist_imauggland, used_by {load_useragent_from_envvars()}"
+        }
+
+    async def setup_all(self):
+        self.clientsession = aiohttp.ClientSession(headers=self.headers)
+
+    async def cleanup(self) -> None:
+        await self.clientsession.close()
+
+    async def _make_request(self, uri:str):
+        if not self.rate_limited:
+            async with self.clientsession.get(uri) as response:
+                if response.status == 200:
+                    return await response.text()
+                elif response.status == 429:
+                    self.rate_limited = True
+                    raise HTTPResponseException(f'Error {response.status}: {response.reason}. NS API rate limited. No retry will be attempted.')
+                    headers = response.headers
+                    await asyncio.sleep(int(headers['Retry-After']))
+                    self.rate_limited = False
+                else:
+                    raise HTTPResponseException(f'Error {response.status}: {response.reason}')
+        else:
+            raise QueryException('Rate limited. Request blocked.')
+
+    async def _query_proposals(self, council: int):
+        council = str(council) # convert to string for URL
+        try:
+            xmlstr = await self._make_request(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=proposals')
             xmltree = etree.fromstring(xmlstr)
-            proposals = xmltree.findall('/WA/PROPOSALS/PROPOSAL')
+            proposals = xmltree.findall('./PROPOSALS/PROPOSAL')
             return proposals
+        except HTTPResponseException as e:
+            raise QueryException(str(e))
 
-async def _parse_coauthor(coauthor:etree._Element):
-    if len(coauthor) == 0:
-        return []
-    else: 
-        return coauthor[0].text.split(',')
+    async def _parse_coauthor(self,coauthor:etree._Element):
+        if len(coauthor) == 0:
+            return []
+        else: 
+            return coauthor[0].text.split(',')
 
-async def _get_quorum():
-    async with aiohttp.ClientSession() as session:
-        async with session.get('http://www.nationstates.net/cgi-bin/api.cgi?wa=1&q=numdelegates') as response:
-            xmlstr = await response.text()
-            xmltree = etree.findall(xmlstr)
-            numdelegates = int(xmltree.findall('/WA/NUMDELEGATES')[0].text)
+    async def _get_quorum(self):
+        try:
+            xmlstr = await self._make_request('http://www.nationstates.net/cgi-bin/api.cgi?wa=1&q=numdelegates')
+            xmltree = etree.fromstring(xmlstr)
+            numdelegates = int(xmltree.findall('./NUMDELEGATES')[0].text)
             quorum = round(numdelegates * 0.06, 1)
             return quorum
+        except HTTPResponseException as e:
+            raise QueryException(str(e))
 
-async def _parse_approvals(approval:etree._Element):
-    if approval[0].text == None:
-        return []
-    else:
-        return approval[0].text.split(':')
+    async def _parse_approvals(self,approval:etree._Element):
+        if approval[0].text == None:
+            return []
+        else:
+            return approval[0].text.split(':')
 
-async def parse_proposals(council: int):
-    xml = await _query_proposals(council)
-    parsed_xml = []
-    for element in xml:
-        parsed_element = classes.wa.Proposal().fromAttributeValues(
-            id = element.findall('./ID')[0].text,
-            council = council,
-            name = element.findall('./NAME')[0].text,
-            category = element.findall('./CATEGORY')[0].text,
-            author = element.findall('./PROPOSED_BY')[0].text,
-            coauthors = await _parse_coauthor(element.findall('./COAUTHOR')),
-            legal = (len(element.findall('./GENSEC/LEGAL/*')) > (len(element.findall('./GENSEC/ILLEGAL/*')) + len(element.findall('./GENSEC/DISCARD/*')))),
-            quorum = len(await _parse_approvals(element.findall('./APPROVALS'))) > await _get_quorum()
-        )
-        parsed_xml.append(parsed_element)
-    return parsed_xml
+    async def parse_proposals(self, council: int):
+        xml = await self._query_proposals(council)
+        parsed_xml = []
+        for element in xml:
+            parsed_element = classes.wa.Proposal().fromAttributeValues(
+                id = element.findall('./ID')[0].text,
+                council = council,
+                name = element.findall('./NAME')[0].text,
+                category = element.findall('./CATEGORY')[0].text,
+                author = element.findall('./PROPOSED_BY')[0].text,
+                coauthors = await self._parse_coauthor(element.findall('./COAUTHOR')),
+                legal = (len(element.findall('./GENSEC/LEGAL/*')) > (len(element.findall('./GENSEC/ILLEGAL/*')) + len(element.findall('./GENSEC/DISCARD/*')))),
+                quorum = len(await self._parse_approvals(element.findall('./APPROVALS'))) > await self._get_quorum()
+            )
+            parsed_xml.append(parsed_element)
+        return parsed_xml
 
-async def _query_atvote(council:int):
-    council = str(council) # convert to string for URL
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=resolution') as response:
-            xmlstr = await response.text()
+    async def _query_atvote(self,council:int):
+        council = str(council) # convert to string for URL
+        try:
+            xmlstr = await self._make_request(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=resolution')
             xmltree = etree.fromstring(xmlstr)
-            resolutions = xmltree.findall('/WA/RESOLUTION')
+            resolutions = xmltree.findall('./RESOLUTION')
             if len(resolutions) == 0:
                 return None
             else:
                 return resolutions
+        except HTTPResponseException as e:
+            raise QueryException(str(e))
