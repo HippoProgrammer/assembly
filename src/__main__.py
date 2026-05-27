@@ -49,6 +49,10 @@ ns_postgres = io.db.NSAssemblyDatabase(ns_conn_uri) # create a DB instance
 ns_akari = io.db.NSAkariDatabase(akari_conn_uri)
 logger.debug('Database objects created')
 
+# set up the API
+ns_api = io.ns.API() # create an API instance
+logger.debug('API object created')
+
 # create the Bot object
 bot = discord.Bot() # create a bot instance
 logger.debug('Bot object created')
@@ -223,7 +227,7 @@ async def _fetch_proposals() -> None:
     for council in [1,2]: # for each council
         logger.debug('New council')
 
-        proposals = await io.ns.parse_proposals(council) # load a parsed version of the proposals from the API   
+        proposals = await ns_api.parse_proposals(council) # load a parsed version of the proposals from the API   
         logger.info('Proposal data fetched from API')
 
         for proposal in proposals: # for each proposal
@@ -492,6 +496,10 @@ async def main() -> None:
         await ns_akari.setup_all()
         logger.info('DB setup scripts completed')
 
+        logger.info('Starting API setup scripts')
+        await ns_api.setup_all()
+        logger.info('API setup scripts completed')
+
         logger.info('Connecting to SSE')
         sse_event_listener = asyncio.create_task(ns_akari.listen_for_new_sse_events(_new_sse_event))
         logger.info('Connected to SSE')
@@ -513,6 +521,10 @@ async def main() -> None:
         await ns_postgres.cleanup()
         await ns_akari.cleanup()
         logger.info('DB cleanup scripts completed')
+
+        logger.info('Starting API cleanup scripts')
+        await ns_api.cleanup()
+        logger.info('API cleanup scripts completed')
 
         logger.info('Program terminated')
 

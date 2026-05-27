@@ -3,8 +3,11 @@ FROM python:3.14.5-alpine3.23
 # create a directory to store the application 
 WORKDIR /usr/local/ns-assembly 
 
+# update alpine packages
+RUN apk update && apk upgrade
+
 # download a signal handler
-RUN wget --progress=dot:giga -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64 \
+RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64 \
 && chmod +x /usr/local/bin/dumb-init
 
 # copy requirements file
