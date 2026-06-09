@@ -68,7 +68,7 @@ class API:
         except HTTPResponseException as e:
             raise QueryException(str(e))
 
-    async def _parse_coauthor(self,coauthor:etree._Element):
+    async def _parse_coauthor(self,coauthor:etree.Element):
         if len(coauthor) == 0:
             return []
         else: 
@@ -84,7 +84,7 @@ class API:
         except HTTPResponseException as e:
             raise QueryException(str(e))
 
-    async def _parse_approvals(self,approval:etree._Element):
+    async def _parse_approvals(self,approval:etree.Element):
         if approval[0].text == None:
             return []
         else:
@@ -112,10 +112,24 @@ class API:
         try:
             xmlstr = await self._make_request(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=resolution')
             xmltree = etree.fromstring(xmlstr)
-            resolutions = xmltree.findall('./RESOLUTION')
-            if len(resolutions) == 0:
+            resolution_elements = xmltree.findall('./RESOLUTION/')
+            if len(resolution_elements) == 0:
                 return None
             else:
-                return resolutions
+                return resolution_elements
         except HTTPResponseException as e:
             raise QueryException(str(e))
+    
+    async def parse_atvote(self, council:int):
+        xml = await self._query_atvote(council)
+        parsed_xml = classes.wa.Proposal().fromAttributeValues(
+            id = 0,
+            council = 0,
+            name = '',
+            category = '',
+            author = '',
+            legal = True,
+            quorum = True,
+            coauthors = []
+        )
+        return parsed_xml
