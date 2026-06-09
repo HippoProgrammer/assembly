@@ -69,7 +69,7 @@ class NSAkariDatabase(Database):
             self.connection_self.connection_pool.check()
     async def cleanup(self) -> None:
         await self._close_connection_pool()
-    async def listen_for_new_sse_events(self,callback) -> None:
+    async def listen_for_new_sse_events(self,callback:function) -> None:
         """Add a listener that calls callback on all new SSE events"""
         try:
             async with self.connection_pool.connection() as conn:
@@ -151,7 +151,7 @@ class NSAssemblyDatabase(Database):
                     return proposal
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def nsqueue_get_all_legal_by_council_limited(self, council = 1, limit = 7) -> list:
+    async def nsqueue_get_all_legal_by_council_limited(self, council:int = 1, limit:int = 7) -> list:
         """Get all proposals that are legal from the NSQueue, up to the specified limit"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
@@ -254,7 +254,7 @@ class NSAssemblyDatabase(Database):
                     return ifvs
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def ifvqueue_get_unauthored_limited(self,limit = 7) -> list:
+    async def ifvqueue_get_unauthored_limited(self,limit:int = 7) -> list:
         """Get all IFVs from the IFVQueue with no author"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
@@ -308,7 +308,7 @@ class NSAssemblyDatabase(Database):
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def ifvqueue_remove_author_link(self, id:str):
+    async def ifvqueue_remove_author_link(self, id:str) -> None:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 self.logger.debug('DB connection opened from pool')
@@ -323,7 +323,7 @@ class NSAssemblyDatabase(Database):
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
     # BotPerms table
-    async def botperms_add(self, permission:classes.auth.Permission):
+    async def botperms_add(self, permission:classes.auth.Permission) -> None:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 self.logger.debug('DB connection opened from pool')
@@ -337,7 +337,7 @@ class NSAssemblyDatabase(Database):
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def botperms_get_by_kind(self, kind:str):
+    async def botperms_get_by_kind(self, kind:str) -> classes.auth.Permission:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 self.logger.debug('DB connection opened from pool')
@@ -352,7 +352,7 @@ class NSAssemblyDatabase(Database):
                     return permission_object
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def channelref_add(self, channel:classes.auth.Channel):
+    async def channelref_add(self, channel:classes.auth.Channel) -> None:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 self.logger.debug('DB connection opened from pool')
@@ -366,7 +366,7 @@ class NSAssemblyDatabase(Database):
                     await conn.commit()
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def channelref_get_by_kind(self, kind:str):
+    async def channelref_get_by_kind(self, kind:str) -> classes.auth.Channel:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 self.logger.debug('DB connection opened from pool')
