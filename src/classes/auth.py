@@ -18,40 +18,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 from .exceptions import *
 import logging
 
-class Permission:
-    def __init__(self):
-        self.initialized = False
-    def fromAttributeValues(self, kind:str, identifier:int):
-        self.kind = kind
-        self.identifier = identifier
-        self.initialized = True
-        return self
-    def fromSQLValues(self, values:tuple):
-        self.kind = values[0]
-        self.identifier = values[1]
-        self.initialized = True
-        return self
-    def toSQLValues(self):
-        if self.initialized:
-            return (self.kind, self.identifier)
-        else:
-            raise exceptions.UninitializedException()
 
-class Channel:
+class DiscordObject:
     def __init__(self):
         self.initialized = False
     def fromAttributeValues(self, kind:str, identifier:int):
         self.kind = kind
         self.identifier = identifier
         self.initialized = True
-        return self
-    def fromSQLValues(self, values:tuple):
+    def fromSQLValues(self, values:tuple[str, int]):
         self.kind = values[0]
         self.identifier = values[1]
         self.initialized = True
-        return self
-    def toSQLValues(self):
+    def toSQLValues(self) -> tuple[str, int]:
         if self.initialized:
             return (self.kind, self.identifier)
         else:
             raise exceptions.UninitializedException()
+class Permission(DiscordObject):
+    pass
+
+class Channel(DiscordObject):
+    pass
