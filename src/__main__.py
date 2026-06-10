@@ -59,7 +59,7 @@ logger.debug('Bot object created')
 
 # define class for IFV modals
 class IFVSelectionModal(discord.ui.DesignerModal):
-    def __init__(self, user_id:int, action:str, options_data:list, *args, **kwargs) -> None:
+    def __init__(self, user_id:int, action:str, options_data:list[classes.ifv.IFV], *args, **kwargs) -> None:
         """Create an IFVSelectionModal object, for selecting and modifying IFV details."""
         super().__init__(*args, **kwargs) # pass args and kwargs to base class
         logger.debug('Args and kwargs passed to base Modal')
@@ -102,7 +102,7 @@ class IFVSelectionModal(discord.ui.DesignerModal):
         
         logger.debug('Modal initialized')
 
-    async def callback(self, interaction):
+    async def callback(self, interaction:discord.Interaction) -> None:
         """Callback for an IFVSelectionModal."""
         success = discord.Embed(description = "IFV modified successfully!").set_footer(text = 'The queue embed may take 1-5 seconds to refresh.')
         failure_invalid_url = discord.Embed(description = "IFV was not modified.").set_footer(text = 'Please provide a link that is a valid URL.')
@@ -143,12 +143,12 @@ class IFVSelectionModal(discord.ui.DesignerModal):
 
 # define class for IFV view
 class IFVView(discord.ui.View):
-    def __init__(self, council:int, *args, **kwargs):
+    def __init__(self, council:int, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs) # pass args and kwargs to base class
         logger.debug('Args and kwargs passed to base Modal')
         
         self.council = council
-    async def _button(self, button, interaction):
+    async def _button(self, button:discord.ui.Button, interaction:discord.Interaction) -> None:
         """Private method to handle button callbacks."""
         action = button.custom_id # redefine some basic information
         user_id = interaction.user.id
@@ -170,15 +170,15 @@ class IFVView(discord.ui.View):
         logger.info('Modal submitted, embed refreshed')
 
     @discord.ui.button(label="Accept IFV", style=discord.ButtonStyle.success, custom_id='accept') # accept IFV button
-    async def accept(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
+    async def accept(self, button:discord.ui.Button, interaction:discord.Interaction) -> None: # pass onto _button handler
         await self._button(button, interaction)
 
     @discord.ui.button(label="Submit IFV", style=discord.ButtonStyle.primary, custom_id='submit') # submit IFV button
-    async def submit(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
+    async def submit(self, button:discord.ui.Button, interaction:discord.Interaction) -> None: # pass onto _button handler
         await self._button(button, interaction)
 
     @discord.ui.button(label="Remove IFV", style=discord.ButtonStyle.danger, custom_id='remove') # remove IFV button
-    async def remove(self, button:discord.ui.Button, interaction:discord.Interaction): # pass onto _button handler
+    async def remove(self, button:discord.ui.Button, interaction:discord.Interaction) -> None: # pass onto _button handler
         await self._button(button, interaction)
 
 
@@ -241,7 +241,7 @@ async def _fetch_proposals() -> None:
                 logger.info('Proposal thread being created')
         logger.info('Proposal data parsed and stored')
 
-async def _new_sse_event(payload:str):
+async def _new_sse_event(payload:str) -> None:
     logger.debug('New SSE event received, checking proposals...')
     await _fetch_proposals()
 
@@ -322,11 +322,6 @@ async def _get_queue_embed(council:int) -> discord.Embed:
             emoji = '🔴'
         else:
             emoji = '🟢'
-
-        '''if len(reactions) == 2: # this was needed once... but then a bug magically resolved itself. leaving here just in case.
-            emoji = '🟢/🔴'
-        else:
-            emoji = reactions[0].emoji'''
         
         logger.debug('Proposal information formatted')
 
@@ -345,7 +340,7 @@ async def _get_queue_embed(council:int) -> discord.Embed:
     logger.info('Embed object created')
     return embed # return it
 
-async def _show_queue(ctx: discord.ApplicationContext, council:int):
+async def _show_queue(ctx: discord.ApplicationContext, council:int) -> None:
     if await _check_perms(ctx, 'user'):
         await ctx.defer(ephemeral = True)
         logger.info('Fetching queue embed')
@@ -361,7 +356,7 @@ async def _show_queue(ctx: discord.ApplicationContext, council:int):
         await ctx.respond(embed = embed, ephemeral = True)
         logger.info('Error embed sent')
 
-async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_users:bool):
+async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_users:bool) -> None:
     if await _check_perms(ctx, 'admin'):
         await ctx.defer() # the deferral must be here so the 'No Permissions' embed can be sent ephemerally
         logger.info('Fetching queue embed')
