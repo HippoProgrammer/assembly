@@ -24,11 +24,14 @@ import logging
 # set up a logger
 logger = logging.getLogger('assembly.customio.ns') # get the logger for this script
 
-class HTTPResponseException(Exception):
-    pass
-
 class QueryException(Exception):
     pass
+class HTTPResponseException(QueryException):
+    pass
+
+class RateLimitedException(HTTPResponseException):
+    pass
+
 class API:
     def __init__(self) -> None:
         self.rate_limited = False
@@ -49,14 +52,14 @@ class API:
                     return await response.text()
                 elif response.status == 429:
                     self.rate_limited = True
-                    raise HTTPResponseException(f'Error {response.status}: {response.reason}. NS API rate limited. No retry will be attempted.')
+                    logger.error('Response error {response.status}: {response.reason}. NS API rate limited. No retry will be attempted.')
                     headers = response.headers
                     await asyncio.sleep(int(headers['Retry-After']))
                     self.rate_limited = False
                 else:
                     raise HTTPResponseException(f'Error {response.status}: {response.reason}')
         else:
-            raise QueryException('Rate limited. Request blocked.')
+            raise RateLimitedException('Rate limited. Request blocked.')
 
     async def _query_proposals(self, council: int) -> etree.ElementTree:
         council = str(council) # convert to string for URL
@@ -81,6 +84,8 @@ class API:
             numdelegates = int(xmltree.findall('./NUMDELEGATES')[0].text)
             quorum = round(numdelegates * 0.06, 1)
             return quorum
+        except RateLimitedException as e:
+            logger.error(str(e))
         except HTTPResponseException as e:
             raise QueryException(str(e))
 
@@ -117,5 +122,7 @@ class API:
                 return None
             else:
                 return resolutions
+        except RateLimitedException as e:
+            logger.error(str(e))
         except HTTPResponseException as e:
             raise QueryException(str(e)) 
