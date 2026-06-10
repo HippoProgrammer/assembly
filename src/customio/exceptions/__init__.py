@@ -14,8 +14,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 
-# simple program to combine other modules into the 'customio' library
-from .db import *
-from .env import *
-from .ns import *
-from .conf import *
+# renamed Exceptions for use by custom libraries
+class InvalidPathException(Exception):
+    pass
