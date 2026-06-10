@@ -88,7 +88,7 @@ class NSAkariDatabase(Database):
             self.connection_self.connection_pool.check()
         except asyncio.CancelledError:
             self.logger.debug('Listener cancelled')
-    async def get_by_event(self, event:int):
+    async def get_by_event(self, event:int) -> classes.sse.Event:
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
                 self.logger.debug('DB connection opened from pool')
@@ -151,7 +151,7 @@ class NSAssemblyDatabase(Database):
                     return proposal
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def nsqueue_get_all_legal_by_council_limited(self, council:int = 1, limit:int = 7) -> list:
+    async def nsqueue_get_all_legal_by_council_limited(self, council:int = 1, limit:int = 7) -> list[classes.wa.Proposal]:
         """Get all proposals that are legal from the NSQueue, up to the specified limit"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
@@ -233,7 +233,7 @@ class NSAssemblyDatabase(Database):
                     return ifv
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def ifvqueue_get_by_author(self, author:int) -> list:
+    async def ifvqueue_get_by_author(self, author:int) -> list[classes.ifv.IFV]:
         """Get all IFVs from the IFVQueue with the specified author"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
@@ -254,7 +254,7 @@ class NSAssemblyDatabase(Database):
                     return ifvs
         except psycopg_pool.PoolTimeout:
             self.connection_self.connection_pool.check()
-    async def ifvqueue_get_unauthored_limited(self,limit:int = 7) -> list:
+    async def ifvqueue_get_unauthored_limited(self,limit:int = 7) -> list[classes.ifv.IFV]:
         """Get all IFVs from the IFVQueue with no author"""
         try:
             async with self.connection_pool.connection() as conn: # get a connection from the pool
