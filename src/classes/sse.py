@@ -19,7 +19,7 @@ from .exceptions import *
 class Event:
     def __init__(self):
         self.initialized = False
-    def fromAttributeValues(self, event:int, time:int, category:str, data:list, actor = None, receptor = None, origin = None, destination = None):
+    def fromAttributeValues(self, event:int, time:int, category:str, data:list, actor: str | None = None, receptor:str | None = None, origin:str | None = None, destination:str | None = None):
         self.event = event
         self.time = time
         self.actor = actor
@@ -29,8 +29,7 @@ class Event:
         self.category = category
         self.data = data
         self.initialized = True
-        return self
-    def fromSQLValues(self, values:tuple):
+    def fromSQLValues(self, values:tuple[int, int, str, list, str | None, str | None, str | None, str | None]):
         self.event = values[0]
         self.time = values[1]
         self.actor = values[2]
@@ -40,8 +39,7 @@ class Event:
         self.category = values[6]
         self.data = values[7]
         self.initialized = True
-        return self
-    def toSQLValues(self):
+    def toSQLValues(self) -> tuple[int, int, str, list, str | None, str | None, str | None, str | None]:
         if self.initialized:
             return (self.event,self.time,self.actor,self.receptor,self.origin,self.destination,self.category,self.data)
         else:

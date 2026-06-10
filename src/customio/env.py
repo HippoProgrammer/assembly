@@ -20,7 +20,7 @@ import logging
 # set up a logger
 logger = logging.getLogger('assembly.customio.env') # get the logger for this script
 
-def load_secrets_from_envvars():
+def load_secrets_from_envvars() -> tuple[str, str]:
     # load envvars 
     token_file = str(os.getenv("ASSEMBLY_TOKEN_FILE"))
     pgpass_file = str(os.getenv("POSTGRES_PASSWORD_FILE"))
@@ -44,7 +44,7 @@ def load_secrets_from_envvars():
         pgpass = file.read()
     return token, pgpass
 
-def load_database_config_from_envvars():
+def load_database_config_from_envvars() -> tuple[str, str, str, str, str]:
     user = str(os.getenv("POSTGRES_USER"))
     host = str(os.getenv("POSTGRES_HOST"))
     port = str(os.getenv("POSTGRES_PORT"))
@@ -52,6 +52,6 @@ def load_database_config_from_envvars():
     akari_db = str(os.getenv("POSTGRES_AKARI_DB"))
     return user, host, port, assembly_db, akari_db
 
-def load_useragent_from_envvars():
+def load_useragent_from_envvars() -> str:
     useragent_nation = str(os.getenv("NS_USER_AGENT"))
     return useragent_nation

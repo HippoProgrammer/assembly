@@ -30,19 +30,19 @@ class HTTPResponseException(Exception):
 class QueryException(Exception):
     pass
 class API:
-    def __init__(self):
+    def __init__(self) -> None:
         self.rate_limited = False
         self.headers = {
             "User-Agent": f"assembly/0.1.0-a1, source https://github.com/HippoProgrammer/assembly, author idinist_imauggland, used_by {load_useragent_from_envvars()}"
         }
 
-    async def setup_all(self):
+    async def setup_all(self) -> None:
         self.clientsession = aiohttp.ClientSession(headers=self.headers)
 
     async def cleanup(self) -> None:
         await self.clientsession.close()
 
-    async def _make_request(self, uri:str):
+    async def _make_request(self, uri:str) -> str:
         if not self.rate_limited:
             async with self.clientsession.get(uri) as response:
                 if response.status == 200:
@@ -58,7 +58,7 @@ class API:
         else:
             raise QueryException('Rate limited. Request blocked.')
 
-    async def _query_proposals(self, council: int):
+    async def _query_proposals(self, council: int) -> etree.ElementTree:
         council = str(council) # convert to string for URL
         try:
             xmlstr = await self._make_request(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=proposals')
@@ -68,13 +68,13 @@ class API:
         except HTTPResponseException as e:
             raise QueryException(str(e))
 
-    async def _parse_coauthor(self,coauthor:etree.Element):
+    async def _parse_coauthor(self,coauthor:etree.Element) -> list[str | None]:
         if len(coauthor) == 0:
             return []
         else: 
             return coauthor[0].text.split(',')
 
-    async def _get_quorum(self):
+    async def _get_quorum(self) -> int:
         try:
             xmlstr = await self._make_request('http://www.nationstates.net/cgi-bin/api.cgi?wa=1&q=numdelegates')
             xmltree = etree.fromstring(xmlstr)
@@ -84,13 +84,13 @@ class API:
         except HTTPResponseException as e:
             raise QueryException(str(e))
 
-    async def _parse_approvals(self,approval:etree.Element):
+    async def _parse_approvals(self,approval:etree.Element) -> list[str | None]:
         if approval[0].text == None:
             return []
         else:
             return approval[0].text.split(':')
 
-    async def parse_proposals(self, council: int):
+    async def parse_proposals(self, council: int) -> list[classes.wa.Proposal]:
         xml = await self._query_proposals(council)
         parsed_xml = []
         for element in xml:
@@ -107,7 +107,7 @@ class API:
             parsed_xml.append(parsed_element)
         return parsed_xml
 
-    async def _query_atvote(self,council:int):
+    async def _query_atvote(self,council:int) -> etree.ElementTree:
         council = str(council) # convert to string for URL
         try:
             xmlstr = await self._make_request(f'http://www.nationstates.net/cgi-bin/api.cgi?wa={council}&q=resolution')
