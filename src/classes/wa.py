@@ -46,3 +46,28 @@ class Proposal:
             return (self.id,self.council,self.name,self.category,self.author,self.coauthors,self.legal,self.quorum)
         else:
             raise exceptions.UninitializedException()
+class ProposalAtVote:
+    def __init__(self):
+        self.initialized = False
+    def fromAttributeValues(self, id:str, council:int, name:str, category:str, author:str, promoted:int, coauthors:list[str | None] = []):
+        self.id = id
+        self.council = council
+        self.name = name
+        self.category = category
+        self.author = author
+        self.coauthors = coauthors
+        self.promoted = promoted # time proposal came to vote
+        self.initialized = True
+    def fromSQLValues(self, values:tuple[str, int, str, str, str, int, list[str | None]]):
+        self.id = values[0]
+        self.council = values[1]
+        self.name = values[2]
+        self.category = values[3]
+        self.author = values[4]
+        self.coauthors = values[5]
+        self.initialized = True
+    def toSQLValues(self) -> tuple[str, int, str, str, str, int, list[str | None]]:
+        if self.initialized:
+            return (self.id,self.council,self.name,self.category,self.author,self.promoted,self.coauthors)
+        else:
+            raise exceptions.UninitializedException()
