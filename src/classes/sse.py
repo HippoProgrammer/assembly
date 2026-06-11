@@ -29,6 +29,7 @@ class Event:
         self.category = category
         self.data = data
         self.initialized = True
+        return self
     def fromSQLValues(self, values:tuple[int, int, str, list, str | None, str | None, str | None, str | None]):
         self.event = values[0]
         self.time = values[1]
@@ -39,6 +40,7 @@ class Event:
         self.category = values[6]
         self.data = values[7]
         self.initialized = True
+        return self
     def toSQLValues(self) -> tuple[int, int, str, list, str | None, str | None, str | None, str | None]:
         if self.initialized:
             return (self.event,self.time,self.actor,self.receptor,self.origin,self.destination,self.category,self.data)

@@ -26,10 +26,12 @@ class DiscordObject:
         self.kind = kind
         self.identifier = identifier
         self.initialized = True
+        return self
     def fromSQLValues(self, values:tuple[str, int]):
         self.kind = values[0]
         self.identifier = values[1]
         self.initialized = True
+        return self
     def toSQLValues(self) -> tuple[str, int]:
         if self.initialized:
             return (self.kind, self.identifier)
