@@ -486,6 +486,11 @@ async def show_sc_queue(ctx: discord.ApplicationContext) -> None:
 async def announce_sc_queue(ctx: discord.ApplicationContext,ping_users:bool) -> None:
     await _announce_queue(ctx = ctx, council = 2, ping_users = ping_users)
 
+@bot.event
+async def on_application_command_error(ctx:discord.ApplicationContext, error:discord.DiscordException):
+    logger.error(error)
+    ctx.respond('<@1271403487045095465> An unspecified error occurred.')
+
 async def main() -> None:
     try:
         logger.info('Starting DB setup scripts')
