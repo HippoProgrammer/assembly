@@ -28,6 +28,7 @@ class IFV:
         self.ifvauthor = ifvauthor
         self.ifvlink = ifvlink
         self.initialized = True
+        return self
     def fromSQLValues(self, values:tuple[str, str, str | None, str | None, str | None]):
         self.id = values[0]
         self.name = values[1]
@@ -35,6 +36,7 @@ class IFV:
         self.ifvauthor = values[3]
         self.ifvlink = values[4]
         self.initialized = True
+        return self
     def toSQLValues(self) -> tuple[str, str, str, str | None, str | None, str | None]:
         if self.initialized:
             return (self.id,self.name,self.thread,self.ifvauthor,self.ifvlink)
