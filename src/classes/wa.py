@@ -31,6 +31,7 @@ class Proposal:
         self.legal = legal
         self.quorum = quorum
         self.initialized = True
+        return self
     def fromSQLValues(self, values:tuple[str, int, str, str, str, bool, bool, list[str | None]]):
         self.id = values[0]
         self.council = values[1]
@@ -41,6 +42,7 @@ class Proposal:
         self.legal = values[6]
         self.quorum = values[7]
         self.initialized = True
+        return self
     def toSQLValues(self) -> tuple[str, int, str, str, str, bool, bool, list[str | None]]:
         if self.initialized:
             return (self.id,self.council,self.name,self.category,self.author,self.coauthors,self.legal,self.quorum)

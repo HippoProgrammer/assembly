@@ -27,6 +27,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     ALTER ROLE ns_akari IN DATABASE ns_akari SET search_path TO akari;
 
     GRANT ALL PRIVILEGES ON SCHEMA akari TO ns_akari;
+    GRANT ALL PRIVILEGES ON SCHEMA public TO ns_akari;
     GRANT ALL PRIVILEGES ON SCHEMA akari TO ns_assembly_app;
     ALTER DEFAULT PRIVILEGES FOR ROLE ns_akari IN SCHEMA akari GRANT ALL ON TABLES TO ns_akari;
     ALTER DEFAULT PRIVILEGES FOR ROLE ns_akari IN SCHEMA akari GRANT SELECT, TRIGGER ON TABLES TO ns_assembly_app;
