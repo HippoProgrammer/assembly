@@ -1,0 +1,7 @@
+discord:
+  token: 1a2b3c4d5e6f # your discord bot token goes here
+  permissions:
+    admin_role_id: 12345678901234567890 # the role ID of the admin role
+    user_role_id: 0987654321098764321 # the role ID of the user role
+  channels:
+    voting_forum: 10293847566574839201 # the channel ID of the forum channel for voting threads

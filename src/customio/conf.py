@@ -14,8 +14,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 
-# simple program to combine other modules into the 'customio' library
-from .db import *
-from .env import *
-from .ns import *
-from .conf import *
+import yaml
+import os
+from .exceptions import *
+
+def load_config_from_file(path:str):
+    if os.path.isfile(path):
+        with open(path, 'r') as file:
+            config = yaml.safe_load(file)
+        return config
+    else:
+        raise exceptions.InvalidPathException('Config path is not a valid file. Cannot start')

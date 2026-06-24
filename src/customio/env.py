@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 
 import os
 import logging
+from .exceptions import *
 
 # set up a logger
 logger = logging.getLogger('assembly.customio.env') # get the logger for this script
@@ -27,13 +28,9 @@ def load_secrets_from_envvars() -> tuple[str, str]:
 
     # sanity-check envvars
     if not os.path.isfile(token_file):
-        msg = 'ASSEMBLY_TOKEN_FILE environment variable is not a valid path, cannot start'
-        logger.error(msg)
-        raise Exception(msg)
+        raise exceptions.InvalidPathException('ASSEMBLY_TOKEN_FILE environment variable is not a valid path, cannot start')
     if not os.path.isfile(pgpass_file):
-        msg = 'POSTGRES_PASS_FILE environment variable is not a valid path, cannot start'
-        logger.error(msg)
-        raise Exception(msg)
+        raise exceptions.InvalidPathException('POSTGRES_PASS_FILE environment variable is not a valid path, cannot start')
 
     # read token file
     with open(token_file,'r') as file:
