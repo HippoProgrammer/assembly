@@ -366,7 +366,8 @@ async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_use
         logger.info('Queue embed fetched')
 
         if ping_users:
-            ping = await ns_postgres.botperms_get_by_kind('user').identifier
+            ping_object = await ns_postgres.botperms_get_by_kind('user')
+            ping = ping_object.identifier
             logger.debug('Ping role id found')
 
             await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView(council = council))
