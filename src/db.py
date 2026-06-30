@@ -3,6 +3,7 @@ import psycopg_pool
 import psycopg.errors
 import logging
 import typing
+import classes
 
 class DBResponse:
     def __init__(self, success: bool, response: list | None):
@@ -62,4 +63,4 @@ class Database:
 
 
 class NSAssembly(Database):
-    pass
+    async def ifvqueue_add(self, ifv:classes.IFV):
