@@ -18,3 +18,4 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 from .db import *
 from .env import *
 from .ns import *
+from .conf import *

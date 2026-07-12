@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
-
-: 'This file is part of assembly.
+'''This file is part of assembly.
 Copyright (C) 2026 HippoProgrammer
 
 This program is free software: you can redistribute it and/or modify
@@ -14,11 +12,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'
+along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    \c ns_assembly
-    
-    CREATE INDEX IF NOT EXISTS IFVQueue_Author_index on IFVQueue (IFVAuthor);
-EOSQL
+# renamed Exceptions for use by custom libraries
+class InvalidPathException(Exception):
+    pass

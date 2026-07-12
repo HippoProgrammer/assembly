@@ -14,29 +14,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.'''
 
-# auth classes
+import yaml
+import os
 from .exceptions import *
-import logging
 
-
-class DiscordObject:
-    def __init__(self):
-        self.initialized = False
-    def fromAttributeValues(self, kind:str, identifier:int):
-        self.kind = kind
-        self.identifier = identifier
-        self.initialized = True
-    def fromSQLValues(self, values:tuple[str, int]):
-        self.kind = values[0]
-        self.identifier = values[1]
-        self.initialized = True
-    def toSQLValues(self) -> tuple[str, int]:
-        if self.initialized:
-            return (self.kind, self.identifier)
-        else:
-            raise exceptions.UninitializedException()
-class Permission(DiscordObject):
-    pass
-
-class Channel(DiscordObject):
-    pass
+def load_config_from_file(path:str):
+    if os.path.isfile(path):
+        with open(path, 'r') as file:
+            config = yaml.safe_load(file)
+        return config
+    else:
+        raise exceptions.InvalidPathException('Config path is not a valid file. Cannot start')

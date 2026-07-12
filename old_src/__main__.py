@@ -223,23 +223,25 @@ async def _create_thread_ifv_for_proposal(proposal:classes.wa.Proposal) -> None:
 
 # define a method of fetching proposals
 async def _fetch_proposals() -> None:
-    """Fetch World Assembly proposals from the NS API, for both councils, into the database."""
+    """Return World Assembly proposals from the NS API, for both councils, and create threads"""
     for council in [1,2]: # for each council
         logger.debug('New council')
 
         proposals = await ns_api.parse_proposals(council) # load a parsed version of the proposals from the API   
         logger.info('Proposal data fetched from API')
 
+        legal_proposals = []
+
         for proposal in proposals: # for each proposal
             if proposal.legal and proposal.quorum:
                 logger.debug('Proposal legal and at quorum')
 
-                await ns_postgres.nsqueue_add(proposal) # add it to the NSQueue table
-                logger.info('Proposal added to NSQueue')
-
                 await _create_thread_ifv_for_proposal(proposal) # create a thread and add it to the IFVQueue table
                 logger.info('Proposal thread being created')
-        logger.info('Proposal data parsed and stored')
+
+                legal_proposals.append(proposal)
+        logger.info('Proposal data parsed')
+        return legal_proposals
 
 async def _new_sse_event(payload:str) -> None:
     logger.debug('New SSE event received, checking proposals...')
@@ -271,7 +273,7 @@ async def _check_perms(ctx:discord.ApplicationContext, check_kind:str) -> bool:
 async def _get_queue_embed(council:int) -> discord.Embed:
     """Get an embed with the World Assembly proposal queue included."""
 
-    queue = await ns_postgres.nsqueue_get_all_legal_by_council_limited(council = council) # fetch all proposals in the NSQueue table
+    queue = await _fetch_proposals()  # fetch all proposals in the NSQueue table
     logger.debug('Proposals fetched from DB')
 
     table = 'Stance | Name | Status | Proposal Link | IFV Author | IFV Link\n' # create a table, starting with the header
@@ -364,7 +366,8 @@ async def _announce_queue(ctx: discord.ApplicationContext, council:int, ping_use
         logger.info('Queue embed fetched')
 
         if ping_users:
-            ping = await ns_postgres.botperms_get_by_kind('user').identifier
+            ping_object = await ns_postgres.botperms_get_by_kind('user')
+            ping = ping_object.identifier
             logger.debug('Ping role id found')
 
             await ctx.respond(f'<@&{ping}>', embed = embed, ephemeral = False, allowed_mentions = discord.AllowedMentions(roles = True), view=IFVView(council = council))
@@ -489,7 +492,7 @@ async def announce_sc_queue(ctx: discord.ApplicationContext,ping_users:bool) -> 
 @bot.event
 async def on_application_command_error(ctx:discord.ApplicationContext, error:discord.DiscordException):
     logger.error(error)
-    ctx.respond('<@1271403487045095465> An unspecified error occurred.')
+    await ctx.respond('<@1271403487045095465> An unspecified error occurred.')
 
 async def main() -> None:
     try:

@@ -113,67 +113,6 @@ class NSAssemblyDatabase(Database):
         await self._open_connection_pool()
     async def cleanup(self) -> None:
         await self._close_connection_pool()
-    # NSQueue table
-    async def nsqueue_add(self,proposal:classes.wa.Proposal) -> None:
-        """Add a Proposal to the NSQueue"""
-        try: # protect against PoolTimeouts
-            async with self.connection_pool.connection() as conn: # get a connection from the pool
-                self.logger.debug('DB connection opened from pool')
-                async with conn.cursor() as cur: # open a cursor
-                    self.logger.debug('Cursor opened')
-
-                    await cur.execute("""
-                    INSERT INTO NSQueue (ID, Council, Name, Category, Author, Coauthors, Legal, Quorum)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (ID) DO NOTHING;
-                    """,proposal.toSQLValues()) # insert data into the table, but if it already exists ignore it
-                    self.logger.info('Successful query')
-
-                    await conn.commit()
-        except psycopg_pool.PoolTimeout:
-            self.connection_self.connection_pool.check()
-    async def nsqueue_get_by_id(self, id:str) -> classes.wa.Proposal:
-        """Get a proposal by ID from the NSQueue"""
-        try:
-            async with self.connection_pool.connection() as conn: # get a connection from the pool
-                self.logger.debug('DB connection opened from pool')
-                async with conn.cursor() as cur: # open a cursor
-                    self.logger.debug('Cursor opened')
-
-                    await cur.execute("""
-                    SELECT * FROM NSQueue
-                    WHERE ID = %s;
-                    """, [id]) # select all proposals with the supplied ID
-                    self.logger.info('Successful query')
-
-                    SQLproposal = await cur.fetchone() # fetch the proposal (as ID is unique there is only one)
-                    proposal = classes.wa.Proposal().fromSQLValues(SQLproposal) # convert it into a Proposal object
-                    return proposal
-        except psycopg_pool.PoolTimeout:
-            self.connection_self.connection_pool.check()
-    async def nsqueue_get_all_legal_by_council_limited(self, council:int = 1, limit:int = 7) -> list[classes.wa.Proposal]:
-        """Get all proposals that are legal from the NSQueue, up to the specified limit"""
-        try:
-            async with self.connection_pool.connection() as conn: # get a connection from the pool
-                self.logger.debug('DB connection opened from pool')
-                async with conn.cursor() as cur: # open a cursor
-                    self.logger.debug('Cursor opened')
-
-                    await cur.execute("""
-                    SELECT * FROM NSQueue 
-                    WHERE Legal AND Council = %s 
-                    LIMIT %s;
-                    """, [council, limit]) # select all legal proposals, up to the queue limit of seven
-                    self.logger.info('Successful query')
-
-                    SQLqueue = await cur.fetchall() # fetch them all
-                    queue = [] 
-                    for item in SQLqueue:
-                        queue.append(classes.wa.Proposal().fromSQLValues(item)) # convert them into a list of Proposal objects
-                    return queue
-
-        except psycopg_pool.PoolTimeout:
-            self.connection_self.connection_pool.check()
     # IFVQueue table
     async def ifvqueue_add(self, ifv:classes.ifv.IFV) -> None:
         """Add an IFV to the IFVQueue"""
