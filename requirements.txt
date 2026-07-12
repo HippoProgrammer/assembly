@@ -2,6 +2,4 @@ py-cord[speed]==2.8.0 # Discord API wrapper
 psycopg[binary,pool]==3.3.4 # Postgres connector
 aiohttp[speedups]==3.14.1 # Async HTTP requests
 validators==0.35.0 # String sanitization and validation
-aiohttp[speedups]==3.13.5 # Async HTTP requests
-validators==0.35.0 # String sanitization and validation
 PyYAML==6.0.3 # YAML parser
